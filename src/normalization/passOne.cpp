@@ -10,156 +10,245 @@ using namespace clang::tooling;
 static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
 
 // Pass One - normalize declarations and control structures
-// 1. DeclStmt in if condition, loop init, switch condition should be moved out
+// 1. DeclStmt in if condition, loop init should be moved out
 // 2. Flatten multiple decls
 
-// IfStmt 
+// IfStmt
 // 1 condition var stmt, & init stmt -> move out
-// -- 2 fp condition -> out? NO NEED
+// -- 2 fp condition -> out? NO NEED because it is the base case
 auto fpDecl = declStmt(has(varDecl(hasType(realFloatingPointType()))));
 
-auto IfStmtCondPat = ifStmt(optionally(hasConditionVariableStatement(fpDecl.bind("decl"))), optionally(hasInitStatement(fpDecl.bind("init")))).bind("parent");
+//hasUnaryOperand
+auto fpInc = unaryOperator(hasAnyOperatorName("++", "--"), hasUnaryOperand(hasType(realFloatingPointType())));
+auto fpAssign = binaryOperator(isAssignmentOperator(), hasType(realFloatingPointType()));
+auto fpChange = expr(anyOf(fpInc, fpAssign));
 
-
+auto IfStmtPat = ifStmt(
+    optionally(hasConditionVariableStatement(fpDecl.bind("decl"))), 
+    optionally(hasInitStatement(fpDecl.bind("init")))
+    ).bind("parent");
 
 // ForStmt/while
 // 1. fp loopInit decl -> out
 // 2. fp loopInit expr -> out
-// -- 3. fp condition -> in NO NEED
+// 3. fp change condition to a ifstmt for further rewriting
 // 4. fp inc -> in
-auto ForStmtPat_DeclInInit = forStmt(hasLoopInit(declStmt(hasDescendant(varDecl(hasType(realFloatingPointType())))).bind("decl"))).bind("forStmt");
-auto ForStmtPat_FpInit = forStmt(hasLoopInit(expr(findAll(binaryOperator(isAssignmentOperator(), hasType(realFloatingPointType())))).bind("decl"))).bind("forStmt");
+// auto ForStmtPat_DeclInInit = forStmt(optionally(hasLoopInit(declStmt(hasDescendant(varDecl(hasType(realFloatingPointType())))).bind("decl"))), optionally(hasLoopInit(expr().bind("init")))).bind("forStmt");
+// auto ForStmtPat_FpInit = forStmt(hasLoopInit(expr(findAll(binaryOperator(isAssignmentOperator(), hasType(realFloatingPointType())))).bind("decl"))).bind("forStmt");
 
-auto ForStmtPat = forStmt(
-    
-).bind("parent");
-
-class IfStmtDeclPatHandler : public MatchHandler
+class IfStmtPatHandler : public MatchHandler
 {
 public:
-    IfStmtDeclPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
-    virtual void run(const MatchFinder::MatchResult &Result) {
-        const IfStmt* stmt = Result.Nodes.getNodeAs<IfStmt>("parent");
-        const DeclStmt* cvs = Result.Nodes.getNodeAs<DeclStmt>("decl");
-        const DeclStmt* lis = Result.Nodes.getNodeAs<DeclStmt>("init");
-        if(cvs==NULL && lis == NULL) return;
-        
+    IfStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("parent");
+        const DeclStmt *cvs = Result.Nodes.getNodeAs<DeclStmt>("decl");
+        const DeclStmt *lis = Result.Nodes.getNodeAs<DeclStmt>("init");
+        if (cvs == NULL && lis == NULL)
+            return;
+
         auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
         Replacements &Replace = ReplaceMap[filename];
 
         std::ostringstream out;
-        out << "{" << std::endl;
-        if(lis!=NULL) {
+        if (lis != NULL)
+        {
             out << flatten_declStmt(lis) << std::endl;
         }
-        if(cvs!=NULL) {
+        if (cvs != NULL)
+        {
             out << flatten_declStmt(cvs) << std::endl;
         }
         Replacement RepCond1(*(Result.SourceManager), stmt->getBeginLoc(), 0, out.str());
         llvm::Error err1 = Replace.add(RepCond1);
 
-        if(lis!=NULL) {
+        if (lis != NULL)
+        {
             Replacement RepCond2(*(Result.SourceManager), lis, "");
             llvm::Error err2 = Replace.add(RepCond2);
         }
-        if(cvs!=NULL) {
+        if (cvs != NULL)
+        {
             VarDecl *var = (VarDecl *)cvs->getSingleDecl();
             Replacement RepCond2(*(Result.SourceManager), cvs, var->getNameAsString());
             llvm::Error err2 = Replace.add(RepCond2);
         }
-        Replacement RepCond3(*(Result.SourceManager), stmt->getEndLoc(), 0, "}");
-        llvm::Error err3 = Replace.add(RepCond3);
     }
 };
+
+auto ForStmtPat = forStmt(
+    optionally(hasLoopInit(fpDecl.bind("decl"))),
+    optionally(hasLoopInit(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("init"))),
+    optionally(hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond"))),
+    optionally(hasIncrement(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("inc")))
+).bind("parent");
+
+class ForStmtPatHandler : public MatchHandler
+{
+public:
+    ForStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const ForStmt *stmt = Result.Nodes.getNodeAs<ForStmt>("parent");
+        const DeclStmt *decl = Result.Nodes.getNodeAs<DeclStmt>("decl");
+        const Expr *init = Result.Nodes.getNodeAs<Expr>("init");
+        const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
+        const Expr *inc = Result.Nodes.getNodeAs<Expr>("inc");
+
+        if (decl == NULL && init == NULL && cond==NULL && inc==NULL)
+            return;
+
+        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
+        Replacements &Replace = ReplaceMap[filename];
+
+        std::ostringstream prefixOut;
+
+        // handle init
+        if (decl != NULL)
+        {
+            prefixOut << flatten_declStmt(decl) << std::endl;
+        }
+        if (init != NULL) // a=b or a=b=c or a=b, c=d=e, ...
+        {
+            prefixOut << print(init) << ";" << std::endl; // it is better to extract fp changes out only
+        }
+        Replacement RepPrefix(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
+        llvm::Error err1 = Replace.add(RepPrefix);
+
+        if (decl != NULL)
+        {
+            Replacement RepInit(*(Result.SourceManager), decl, ";");
+            llvm::Error err2 = Replace.add(RepInit);
+        }
+        if (init != NULL)
+        {
+            Replacement RepInit(*(Result.SourceManager), init, "");
+            llvm::Error err2 = Replace.add(RepInit);
+        }
+
+        std::ostringstream bodyOut;
+
+        if (cond != NULL)
+        {
+            Replacement RepCond(*(Result.SourceManager), cond, "");
+            llvm::Error err2 = Replace.add(RepCond);
+            bodyOut << "{\n";
+            bodyOut << "if(!(" << print(cond) << ")) break;\n";
+            // because body must be something like {...}, we replace the open bracket
+            Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
+            llvm::Error errBodyF = Replace.add(RepBodyF);
+        }
+        bodyOut.str("");
+        if (inc != NULL)
+        {
+            Replacement RepInc(*(Result.SourceManager), inc, "");
+            llvm::Error err2 = Replace.add(RepInc);
+            bodyOut << print(inc) << ";\n}\n";
+            Replacement RepBodyB(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
+            llvm::Error errBodyB = Replace.add(RepBodyB);
+        }
+    }
+};
+
+// I don't know the meaning of this statement
+auto WhileStmtPat = whileStmt(
+    optionally(has(fpDecl.bind("decl"))),
+    optionally(hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond")))
+).bind("parent");
+
+class WhileStmtPatHandler : public MatchHandler
+{
+public:
+    WhileStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const WhileStmt *stmt = Result.Nodes.getNodeAs<WhileStmt>("parent");
+        const DeclStmt *decl = Result.Nodes.getNodeAs<DeclStmt>("decl");
+        const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
+
+        if (decl == NULL && cond==NULL)
+            return;
+
+        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
+        Replacements &Replace = ReplaceMap[filename];
+
+        std::ostringstream prefixOut;
+
+        // handle init
+        if (decl != NULL)
+        {
+            prefixOut << "// semantics of this while may be changed !!\n";
+            prefixOut << flatten_declStmt(decl) << std::endl;
+            Replacement RepPrefix(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
+            llvm::Error err1 = Replace.add(RepPrefix);
+
+            Replacement RepInit(*(Result.SourceManager), decl, "");
+            llvm::Error err2 = Replace.add(RepInit);
+        }
+
+        std::ostringstream bodyOut;
+
+        if (cond != NULL)
+        {
+            Replacement RepCond(*(Result.SourceManager), cond, "true");
+            llvm::Error err2 = Replace.add(RepCond);
+            bodyOut << "{\n";
+            bodyOut << "if(!(" << print(cond) << ")) break;\n";
+            // because body must be something like {...}, we replace the open bracket
+            Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
+            llvm::Error errBodyF = Replace.add(RepBodyF);
+        }
+    }
+};
+
+auto DoStmtPat = doStmt(
+    hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond"))
+).bind("parent");
+
+class DoStmtPatHandler : public MatchHandler
+{
+public:
+    DoStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const DoStmt *stmt = Result.Nodes.getNodeAs<DoStmt>("parent");
+        const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
+
+        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
+        Replacements &Replace = ReplaceMap[filename];
+
+        std::ostringstream bodyOut;
+
+        Replacement RepCond(*(Result.SourceManager), cond, "true");
+        llvm::Error err2 = Replace.add(RepCond);
+        bodyOut << "if(!(" << print(cond) << ")) break;\n";
+        bodyOut << "}";
+        // because body must be something like {...}, we replace the open bracket
+        Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
+        llvm::Error errBodyF = Replace.add(RepBodyF);
+    }
+};
+
+// auto SwitchStmtPat = switchStmt(
+//     optionally(hasConditionVariableStatement<SwitchStmt>(fpDecl.bind("decl"))), 
+//     optionally(hasInitStatement(fpDecl.bind("init")))).bind("parent");
+
+// auto conditionStmtPat = stmt(anyOf(IfStmtPat, SwitchStmtPat));
 
 // the following pattern cannot handle the code like "if(...) int x=1,y=2;", since the code is meaningless
 // the following pattern and above three patterns are disjoint
 auto MultiDeclPat_DeclInBlock = declStmt(allOf(unless(hasSingleDecl(anything())), hasParent(compoundStmt()))).bind("decl");
 
-class DeclPatHandler : public MatchHandler
-{
-public:
-    DeclPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
-
-    virtual void run(const MatchFinder::MatchResult &Result)
-    {
-        const DeclStmt *decl = Result.Nodes.getNodeAs<clang::DeclStmt>("decl");
-        if (decl != NULL)
-        {
-            auto filename = Result.SourceManager->getFilename(decl->getBeginLoc()).str();
-            Replacements &Replace = ReplaceMap[filename];
-            std::ostringstream out;
-
-            const ForStmt *forS = Result.Nodes.getNodeAs<clang::ForStmt>("forStmt");
-            if (forS != NULL) // decl is not used as a condition
-            {
-                out << "{"
-                    << std::endl
-                    << flatten_declStmt(decl)
-                    << std::endl;
-
-                Replacement RepCond1(*(Result.SourceManager), forS->getBeginLoc(), 0, out.str());
-                Replacement RepCond2(*(Result.SourceManager), decl, ";");
-                Replacement RepCond3(*(Result.SourceManager), forS->getEndLoc(), 0, "\n}\n");
-                llvm::Error err1 = Replace.add(RepCond1);
-                llvm::Error err2 = Replace.add(RepCond2);
-                llvm::Error err3 = Replace.add(RepCond3);
-            }
-            else 
-            {
-                const Stmt *parent = Result.Nodes.getNodeAs<clang::Stmt>("parent");
-                if(parent==NULL) { // multiple decls in compound stmt
-                    Replacement RepCond1(*(Result.SourceManager), decl, print(decl));
-                    llvm::Error err1 = Replace.add(RepCond1);
-                } else { // decl is used as a condition, it must be a single decl
-                    VarDecl *var = (VarDecl *)decl->getSingleDecl();
-                    out << "{"
-                        << std::endl
-                        << flatten_declStmt(decl)
-                        << std::endl;
-
-                    Replacement RepCond1(*(Result.SourceManager), parent->getBeginLoc(), 0, out.str());
-                    Replacement RepCond2(*(Result.SourceManager), decl, var->getNameAsString());
-                    Replacement RepCond3(*(Result.SourceManager), parent->getEndLoc(), 0, "\n}\n");
-
-                    llvm::Error err1 = Replace.add(RepCond1);
-                    llvm::Error err2 = Replace.add(RepCond2);
-                    llvm::Error err3 = Replace.add(RepCond3);
-                }
-            }
-        }
-        else // if(double d=0;d>0) ...
-        {
-            decl = Result.Nodes.getNodeAs<clang::DeclStmt>("init");
-            if (decl != NULL)
-            {
-                auto filename = Result.SourceManager->getFilename(decl->getBeginLoc()).str();
-                Replacements &Replace = ReplaceMap[filename];
-                std::ostringstream out;
-                const Stmt *parent = Result.Nodes.getNodeAs<clang::Stmt>("parent");
-                out << "{"
-                    << std::endl
-                    << flatten_declStmt(decl)
-                    << std::endl;
-
-                Replacement RepCond1(*(Result.SourceManager), parent->getBeginLoc(), 0, out.str());
-                Replacement RepCond2(*(Result.SourceManager), decl, "");
-                Replacement RepCond3(*(Result.SourceManager), parent->getEndLoc(), 0, "\n}\n");
-
-                llvm::Error err1 = Replace.add(RepCond1);
-                llvm::Error err2 = Replace.add(RepCond2);
-                llvm::Error err3 = Replace.add(RepCond3);
-            }
-        }
-    }
-};
 
 int main(int argc, const char **argv)
 {
     CodeTransformationTool tool(argc, argv, ScDebugTool);
-    
-    tool.add<decltype(IfStmtCondPat), IfStmtDeclPatHandler>(IfStmtCondPat);
-
+    tool.add<decltype(IfStmtPat), IfStmtPatHandler>(IfStmtPat);
+    // tool.add<decltype(SwitchStmtPat), IfStmtPatHandler>(SwitchStmtPat);
+    tool.add<decltype(ForStmtPat), ForStmtPatHandler>(ForStmtPat);
+    tool.add<decltype(WhileStmtPat), WhileStmtPatHandler>(WhileStmtPat);
+    tool.add<decltype(DoStmtPat), DoStmtPatHandler>(DoStmtPat);
     // tool.add<decltype(ForStmtPat_DeclInInit), DeclPatHandler>(ForStmtPat_DeclInInit);
     // tool.add<decltype(MultiDeclPat_DeclInBlock), DeclPatHandler>(MultiDeclPat_DeclInBlock);
 

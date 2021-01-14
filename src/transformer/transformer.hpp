@@ -188,8 +188,12 @@ public:
              I != E; ++I)
         {
             const FileEntry *Entry = Sources.getFileEntryForID(I->first);
-            llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
-            I->second.write(llvm::outs());
+            std::error_code err;
+            llvm::raw_fd_ostream out(Entry->getName(), err);
+            out << "// Rewrite " << Entry->getName() << "\n";
+            I->second.write(out);
+            out.flush();
+            out.close();
         }
         return 0;
     }

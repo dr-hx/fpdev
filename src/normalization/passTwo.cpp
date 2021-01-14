@@ -15,10 +15,18 @@ static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
 // 2. fp parameters of a call to a fp func must be atomic
 // 3. all returned floating point values must be variables or constants
 
-auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()),hasAnyParameter(hasType(realFloatingPointType()))));
+auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
 // auto fpCxxMemFpFunc = cxxMethodDecl(anyOf(hasType(realFloatingPointType()),hasAnyParameter(hasType(realFloatingPointType()))));
 
-auto callFpFunc = callExpr(callee(fpFunc),hasAncestor(stmt(unless(expr())).bind("stmt"))).bind("expression");
+auto callFpFunc = callExpr(
+                      callee(fpFunc),                                                                         // call to fp funct
+                      hasAncestor(stmt(unless(expr())).bind("stmt")),                                         // find root stmt
+                      unless(hasParent(binaryOperator(isAssignmentOperator()))),                              // exclude direct assignment
+                      unless(hasParent(implicitCastExpr(hasParent(binaryOperator(isAssignmentOperator()))))), // exclude direct assignment
+                      unless(hasParent(implicitCastExpr(hasParent(varDecl())))),                              // exclude direct initialization
+                      unless(hasParent(varDecl()))                                                            // exclude direct initialization
+                      )
+                      .bind("expression");
 //auto callCxxMemFpFunc = cxxMemberCallExpr(callee(fpCxxMemFpFunc),hasAncestor(stmt().bind("stmt"))).bind("expressions");
 
 // auto containerStmt = stmt(anyOf(compoundStmt(), ifStmt(), forStmt(), switchStmt(), switchCase(), whileStmt(), doStmt()));
@@ -56,26 +64,24 @@ public:
         auto extIt = exts.begin();
         while (lastExt != NULL || extIt != exts.end())
         {
-            if (lastExt!=NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
+            if (lastExt != NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
             {
                 out.flush();
                 std::string parmDef = out.str();
                 auto filename = lastExt->manager->getFilename(lastExt->statement->getBeginLoc()).str();
-                Replacement Rep1(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, "{\n" + parmDef);
+                Replacement Rep1(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
                 std::string stmt_Str = print(lastExt->expression, &helper);
                 Replacement Rep2(*lastExt->manager, lastExt->expression, stmt_Str);
-                Replacement Rep3(*lastExt->manager, lastExt->statement->getEndLoc(), 0, "}\n");
                 Replacements &Replace = ReplaceMap[filename];
                 llvm::Error err1 = Replace.add(Rep1);
                 llvm::Error err2 = Replace.add(Rep2);
-                llvm::Error err3 = Replace.add(Rep3);
                 lastExt = NULL;
                 out.str("");
             }
             else
             {
                 std::string parTmp = randomIdentifier("paramTmp");
-                out << extIt->type.getAsString()
+                out << "const " << extIt->type.getAsString()
                     << " " << parTmp << " = " << print(extIt->expression, &helper) << ";" << std::endl;
                 helper.addShortcut(extIt->expression, parTmp); // must after the above line
                 lastExt = &*extIt;
@@ -86,7 +92,6 @@ public:
     }
 
     ParamPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
-    
 
     std::vector<ExpressionExtractionRequest> extractions;
     virtual void run(const MatchFinder::MatchResult &Result)
@@ -95,8 +100,10 @@ public:
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
         const ParmVarDecl *formal = Result.Nodes.getNodeAs<ParmVarDecl>("formal");
         QualType type;
-        if(formal==NULL) type = actual->getType();
-        else type = formal->getType();
+        if (formal == NULL)
+            type = actual->getType();
+        else
+            type = formal->getType();
         // actual->dumpColor();
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
     }
@@ -120,7 +127,7 @@ int main(int argc, const char **argv)
 
     ParamPatHandler handler(tool.GetReplacements());
 
-    tool.add(target,handler);
+    tool.add(target, handler);
     // tool.add(callFpFunc,handler);
 
     tool.run();

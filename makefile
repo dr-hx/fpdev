@@ -9,12 +9,25 @@ LIB_PATHS = -L/usr/local/Cellar/llvm/11.0.0/lib
 COMPILER_FLAGS = -std=c++17
 LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
 
+passZero: normalization/passZero.cpp
+	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passZero.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passZero
+
 passOne: normalization/passOne.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passOne.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passOne
 
 passTwo: normalization/passTwo.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passTwo.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passTwo
 
+base=./test
+fn=test.cpp
+test: passZero passOne passTwo
+	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
+	./bin/passZero ${base}/derived/${fn}
+	./bin/passOne ${base}/derived/${fn}
+	./bin/passTwo ${base}/derived/${fn}
 
-test: passOne
-	./bin/passOne ./test/test.cpp
+testonly:
+	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
+	./bin/passZero ${base}/derived/${fn}
+	./bin/passOne ${base}/derived/${fn}
+	./bin/passTwo ${base}/derived/${fn}
