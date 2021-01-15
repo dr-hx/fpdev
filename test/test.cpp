@@ -7,9 +7,7 @@
 int main(int argc, char const *argv[])
 {
     if (double d = 0; double x = 5)
-    {
         HELLO;
-    }
 
     int *p;
 
@@ -35,9 +33,8 @@ int main(int argc, char const *argv[])
         break;
     }
 
-    while(int i=0) {
+    while(int i=0)
         i++;
-    }
 
     double x, y = 2, z = 4;
 
@@ -81,6 +78,8 @@ void testPassOne() {
 
 double testPassTwo(double x)
 {
+    double &a = x;
+    double &b = a;
     testPassTwo(x);
     testPassTwo(x)+1;
     x = testPassTwo(x);

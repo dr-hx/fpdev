@@ -1,13 +1,16 @@
-vpath %.cpp src src/normalization src/transformer
+vpath %.cpp src src/normalization src/transformer src/instrumentation
 vpath %h src/util
+vpath %hpp src/util src/transformer
 
 CC = /usr/bin/clang++
-CLANG_LIBS = -lLLVM -lLLVMCodeGen -llldYAML -lclang -lclangARCMigrate -lclangAST -lclangASTMatchers -lclangAnalysis -lclangApplyReplacements -lclangBasic -lclangChangeNamespace -lclangCodeGen -lclangCrossTU -lclangDaemon -lclangDaemonTweaks -lclangDependencyScanning -lclangDirectoryWatcher -lclangDoc -lclangDriver -lclangDynamicASTMatchers -lclangEdit -lclangFormat -lclangFrontend -lclangFrontendTool -lclangHandleCXX -lclangHandleLLVM -lclangIncludeFixer -lclangIncludeFixerPlugin -lclangIndex -lclangLex -lclangMove -lclangParse -lclangQuery -lclangReorderFields -lclangRewrite -lclangRewriteFrontend -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend -lclangTesting -lclangTidy -lclangTidyAbseilModule -lclangTidyAndroidModule -lclangTidyBoostModule -lclangTidyBugproneModule -lclangTidyCERTModule -lclangTidyCppCoreGuidelinesModule -lclangTidyDarwinModule -lclangTidyFuchsiaModule -lclangTidyGoogleModule -lclangTidyHICPPModule -lclangTidyLLVMLibcModule -lclangTidyLLVMModule -lclangTidyLinuxKernelModule -lclangTidyMPIModule -lclangTidyMain -lclangTidyMiscModule -lclangTidyModernizeModule -lclangTidyObjCModule -lclangTidyOpenMPModule -lclangTidyPerformanceModule -lclangTidyPlugin -lclangTidyPortabilityModule -lclangTidyReadabilityModule -lclangTidyUtils -lclangTidyZirconModule -lclangTooling -lclangToolingASTDiff -lclangToolingCore -lclangToolingInclusions -lclangToolingRefactoring -lclangToolingSyntax -lclangTransformer -lclangdRemoteIndex -lclangdSupport -lclangdXpcJsonConversions -lclangdXpcTransport
-INCL_PATHS = -I/usr/local/Cellar/llvm/11.0.0/include/ -I.
+CLANG_LIBS = -lLLVM -lLLVMCodeGen -llldYAML -lclang -lclangAST -lclangASTMatchers -lclangAnalysis -lclangApplyReplacements -lclangBasic -lclangChangeNamespace -lclangCodeGen -lclangCrossTU -lclangDependencyScanning -lclangDirectoryWatcher -lclangDoc -lclangDriver -lclangDynamicASTMatchers -lclangEdit -lclangFormat -lclangFrontend -lclangFrontendTool -lclangHandleCXX -lclangHandleLLVM -lclangIncludeFixer -lclangIncludeFixerPlugin -lclangIndex -lclangLex -lclangMove -lclangParse -lclangQuery -lclangReorderFields -lclangRewrite -lclangRewriteFrontend -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend -lclangTesting -lclangTidy -lclangTooling -lclangToolingASTDiff -lclangToolingCore -lclangToolingInclusions -lclangToolingRefactoring -lclangToolingSyntax -lclangTransformer -lclangdSupport
+INCL_PATHS = -I/usr/local/Cellar/llvm/11.0.0/include -I.
 LIB_PATHS = -L/usr/local/Cellar/llvm/11.0.0/lib
 
 COMPILER_FLAGS = -std=c++17
 LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
+
+TOOL_ARGS = #-- ${COMPILER_FLAGS} ${INCL_PATHS}
 
 passZero: normalization/passZero.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passZero.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passZero
@@ -21,19 +24,31 @@ passTwo: normalization/passTwo.cpp
 passThree: normalization/passThree.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passThree.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passThree
 
+normalization : passZero, passOne, passTwo, passThree
+
+turnFpArith: instrumentation/turnFpArith.cpp
+	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g instrumentation/turnFpArith.cpp ${LIB_PATHS} ${LIBS} -o ../bin/turnFpArith
+
+instrumentation : turnFpArith
 
 base=./test
 fn=test.cpp
-test: passZero passOne passTwo passThree
+testnorm: passZero passOne passTwo passThree
 	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
-	./bin/passZero ${base}/derived/${fn}
-	./bin/passOne ${base}/derived/${fn}
-	./bin/passTwo ${base}/derived/${fn}
-	./bin/passThree ${base}/derived/${fn}
+	./bin/passZero ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passOne ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passTwo ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passThree ${base}/derived/${fn} ${TOOL_ARGS}
 
-testonly:
+testins: instrumentation testnorm
+	./bin/turnFpArith ${base}/derived/${fn} ${TOOL_ARGS}
+
+testnormonly:
 	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
-	./bin/passZero ${base}/derived/${fn}
-	./bin/passOne ${base}/derived/${fn}
-	./bin/passTwo ${base}/derived/${fn}
-	./bin/passThree ${base}/derived/${fn}
+	./bin/passZero ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passOne ${base}/derived/${fn} ${TOOL_ARGS}
+	# ./bin/passTwo ${base}/derived/${fn} ${TOOL_ARGS}
+	# ./bin/passThree ${base}/derived/${fn} ${TOOL_ARGS}
+
+testinsonly: testnormonly
+	./bin/turnFpArith ${base}/derived/${fn} ${TOOL_ARGS}

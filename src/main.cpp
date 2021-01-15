@@ -13,7 +13,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
+static llvm::cl::OptionCategory ToolingSampleCategory("ScDebug Tool");
 
 class IfStmtHandler : public MatchFinder::MatchCallback {
 public:

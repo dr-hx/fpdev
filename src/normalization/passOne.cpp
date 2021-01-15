@@ -7,7 +7,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
+static llvm::cl::OptionCategory ScDebugTool("ScDebug Tool");
 
 // Pass One - normalize declarations and control structures
 // 1. DeclStmt in if condition, loop init should be moved out
@@ -60,18 +60,18 @@ public:
         {
             out << flatten_declStmt(cvs) << std::endl;
         }
-        Replacement RepCond1(*(Result.SourceManager), stmt->getBeginLoc(), 0, out.str());
+        Replacement RepCond1 = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, out.str());
         llvm::Error err1 = Replace.add(RepCond1);
 
         if (lis != NULL)
         {
-            Replacement RepCond2(*(Result.SourceManager), lis, "");
+            Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), lis, "");
             llvm::Error err2 = Replace.add(RepCond2);
         }
         if (cvs != NULL)
         {
             VarDecl *var = (VarDecl *)cvs->getSingleDecl();
-            Replacement RepCond2(*(Result.SourceManager), cvs, var->getNameAsString());
+            Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), cvs, var->getNameAsString());
             llvm::Error err2 = Replace.add(RepCond2);
         }
     }
@@ -113,17 +113,17 @@ public:
         {
             prefixOut << print(init) << ";" << std::endl; // it is better to extract fp changes out only
         }
-        Replacement RepPrefix(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
+        Replacement RepPrefix = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
         llvm::Error err1 = Replace.add(RepPrefix);
 
         if (decl != NULL)
         {
-            Replacement RepInit(*(Result.SourceManager), decl, ";");
+            Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), decl, ";");
             llvm::Error err2 = Replace.add(RepInit);
         }
         if (init != NULL)
         {
-            Replacement RepInit(*(Result.SourceManager), init, "");
+            Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), init, "");
             llvm::Error err2 = Replace.add(RepInit);
         }
 
@@ -131,21 +131,21 @@ public:
 
         if (cond != NULL)
         {
-            Replacement RepCond(*(Result.SourceManager), cond, "");
+            Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "");
             llvm::Error err2 = Replace.add(RepCond);
             bodyOut << "{\n";
             bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
-            Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
+            Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
             llvm::Error errBodyF = Replace.add(RepBodyF);
         }
         bodyOut.str("");
         if (inc != NULL)
         {
-            Replacement RepInc(*(Result.SourceManager), inc, "");
+            Replacement RepInc = ReplacementBuilder::create(*(Result.SourceManager), inc, "");
             llvm::Error err2 = Replace.add(RepInc);
             bodyOut << print(inc) << ";\n}\n";
-            Replacement RepBodyB(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
+            Replacement RepBodyB = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
             llvm::Error errBodyB = Replace.add(RepBodyB);
         }
     }
@@ -180,10 +180,10 @@ public:
         {
             prefixOut << "// semantics of this while may be changed !!\n";
             prefixOut << flatten_declStmt(decl) << std::endl;
-            Replacement RepPrefix(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
+            Replacement RepPrefix = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
             llvm::Error err1 = Replace.add(RepPrefix);
 
-            Replacement RepInit(*(Result.SourceManager), decl, "");
+            Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), decl, "");
             llvm::Error err2 = Replace.add(RepInit);
         }
 
@@ -191,12 +191,12 @@ public:
 
         if (cond != NULL)
         {
-            Replacement RepCond(*(Result.SourceManager), cond, "true");
+            Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
             llvm::Error err2 = Replace.add(RepCond);
             bodyOut << "{\n";
             bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
-            Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
+            Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
             llvm::Error errBodyF = Replace.add(RepBodyF);
         }
     }
@@ -220,12 +220,12 @@ public:
 
         std::ostringstream bodyOut;
 
-        Replacement RepCond(*(Result.SourceManager), cond, "true");
+        Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
         llvm::Error err2 = Replace.add(RepCond);
         bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
         bodyOut << "}";
         // because body must be something like {...}, we replace the open bracket
-        Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
+        Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
         llvm::Error errBodyF = Replace.add(RepBodyF);
     }
 };

@@ -7,7 +7,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
+static llvm::cl::OptionCategory ScDebugTool("ScDebug Tool");
 
 //Pass Two - normalize calls to fp functions
 // An fp func is a func that takes or returns fp values.
@@ -51,23 +51,6 @@ auto target = stmt(eachOf(paramOfCall, RetStmtPat, callFpFunc));
 class ParamPatHandler : public MatchHandler
 {
 public:
-    std::set<const Stmt*> rootStmt;
-    void addAsRoot(const Stmt* stmt) {
-        std::vector<const Stmt*> toBeDel;
-        for(auto root : rootStmt) {
-            if(stmt->getSourceRange().fullyContains(root->getSourceRange())) {
-                toBeDel.push_back(root);
-            }
-        }
-        for(auto del : toBeDel) {
-            rootStmt.erase(del);
-        }
-        rootStmt.insert(stmt);
-    }
-    bool isRoot(const Stmt* stmt) {
-        return rootStmt.count(stmt)!=0;
-    }
-
     virtual void onEndOfTranslationUnit()
     {
         ExtractionPrinterHelper helper;
@@ -95,7 +78,7 @@ public:
                 out.flush();
                 
                 std::string parmDef = out.str();
-                Replacement Rep1(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
+                Replacement Rep1 = ReplacementBuilder::create(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
                 llvm::Error err1 = Replace->add(Rep1);
 
                 lastExt = NULL;
@@ -108,9 +91,9 @@ public:
                     << " " << parTmp << " = " << print(extIt->expression, &helper) << ";\n";
                 helper.addShortcut(extIt->expression, parTmp); // must after the above line
 
-                if(isRoot(extIt->expression)) {
+                if(isNonOverlappedStmt(extIt->expression)) {
                     std::string stmt_Str = print(extIt->expression, &helper);
-                    Replacement Rep2(*extIt->manager, extIt->expression, stmt_Str);
+                    Replacement Rep2 = ReplacementBuilder::create(*extIt->manager, extIt->expression, stmt_Str);
                     llvm::Error err2 = Replace->add(Rep2);
                 }
                 
@@ -119,7 +102,7 @@ public:
             }
         }
         extractions.clear();
-        rootStmt.clear();
+        nonOverlappedStmts.clear();
     }
 
     ParamPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
@@ -137,7 +120,7 @@ public:
             type = formal->getType();
         // actual->dumpColor();
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
-        addAsRoot(actual);
+        addAsNonOverlappedStmt(actual, extractions.back().actualExpressionRange);
     }
 };
 

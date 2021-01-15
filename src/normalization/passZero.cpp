@@ -8,7 +8,7 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
+static llvm::cl::OptionCategory ToolingSampleCategory("ScDebug Tool");
 
 // Pass Zero - turn empty or single statement into compound statement
 auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
@@ -41,6 +41,9 @@ auto stmtWithScope = stmt(anyOf(IfStmtPat,ForStmtPat,WhileStmtPat)).bind("stmt")
 
 auto target = stmt(eachOf(stmtWithScope, hangStmt));
 
+// flatten
+auto multipleFpDecl = declStmt(unless(hasSingleDecl(anything())),fpDecl);
+
 class SingleStmtPatHandler : public MatchHandler
 {
 public:
@@ -58,28 +61,16 @@ public:
                 const DeclStmt* condVar = Result.Nodes.getNodeAs<DeclStmt>("condVar");
                 if(decl==condVar) { // inexact if the matching is unordered
                     stmtVector.insert(stmt);
-                    addAsRoot(stmt);
+                    addAsNonOverlappedStmt(stmt, Result.SourceManager);
                 }
             }
         } else {
             stmtVector.insert(stmt);
-            addAsRoot(stmt);
+            addAsNonOverlappedStmt(stmt, Result.SourceManager);
         }
 
     }
-    std::vector<const Stmt*> rootStmt;
-    void addAsRoot(const Stmt* stmt) {
-        std::vector<const Stmt*> toBeDel;
-        auto stmtIt = rootStmt.begin();
-        while(stmtIt!=rootStmt.end()) {
-            if(stmt->getSourceRange().fullyContains((*stmtIt)->getSourceRange())) {
-                toBeDel.push_back(*stmtIt);
-            }
-            stmtIt++;
-        }
-        rootStmt.erase(toBeDel.begin(), toBeDel.end());
-        rootStmt.push_back(stmt);
-    }
+
     class ParnStmtHelper : public PrinterHelper
     {
     public:
@@ -94,7 +85,6 @@ public:
                 }
                 else {
                     OS << "{";
-                    // OS << "//" << std::string(E->getStmtClassName()) <<"\n";
                     E->printPretty(OS, this, PrintingPolicy(LangOptions()));
                     if(isa<Expr>(E)) {
                         OS << ";";
@@ -111,25 +101,27 @@ public:
     virtual void onEndOfTranslationUnit() {
         Replacements *Replace = NULL;
         ParnStmtHelper helper(stmtVector);
-        for(auto s : rootStmt) {
+        int count = 0;
+        for(auto s : this->nonOverlappedStmts.roots) {
+            printf("%d\n", count++);
             if(Replace==NULL) {
-                std::string fn = (Manager->getFilename(s->getBeginLoc()).str());
+                std::string fn = (Manager->getFilename(s.rangeInFile.getBegin()).str());
                 Replace = &ReplaceMap[fn];
             }
             std::string str;
             llvm::raw_string_ostream stream(str);
-            s->printPretty(stream, &helper, PrintingPolicy(LangOptions()));
+            s.statement->printPretty(stream, &helper, PrintingPolicy(LangOptions()));
             // if(isa<Expr>(s)) {
             //     Replacement Rep(*Manager, s, stream.str());
             //     llvm::Error err = Replace->add(Rep);
             //     Replacement Rep2(*Manager, s->getEndLoc().getLocWithOffset(1), 1, ""); // this intends to clear ";"
             //     llvm::Error err2 = Replace->add(Rep2);
             // } else {
-            Replacement Rep(*Manager, s, stream.str());
+            Replacement Rep = ReplacementBuilder::create(*Manager, s.statement, stream.str());
             llvm::Error err = Replace->add(Rep);
             // }
         }
-        rootStmt.clear();
+        nonOverlappedStmts.clear();
         stmtVector.clear();
         Manager = NULL;
     }
@@ -137,7 +129,7 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass Zero: turn empty and hanging statements");
+    CodeTransformationTool tool(argc, argv, ToolingSampleCategory, "Pass Zero: turn empty and hanging statements");
     tool.add<decltype(target), SingleStmtPatHandler>(target);
 
     tool.run();
