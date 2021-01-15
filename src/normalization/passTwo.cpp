@@ -18,12 +18,14 @@ static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
 auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
 // auto fpCxxMemFpFunc = cxxMethodDecl(anyOf(hasType(realFloatingPointType()),hasAnyParameter(hasType(realFloatingPointType()))));
 
+auto rootStmt = stmt(anyOf(unless(expr()), expr(hasParent(compoundStmt()))));
+
+//FIXME, stmt(unless(expr()) cannot handle assignments and other cases
 auto callFpFunc = callExpr(
                       callee(fpFunc),                                                                         // call to fp funct
-                      hasAncestor(stmt(unless(expr())).bind("stmt")),                                         // find root stmt
+                      hasAncestor(rootStmt.bind("stmt")),                                         // find root stmt
+                      unless(hasParent(compoundStmt())), // exclude direct call
                       unless(hasParent(binaryOperator(isAssignmentOperator()))),                              // exclude direct assignment
-                      unless(hasParent(implicitCastExpr(hasParent(binaryOperator(isAssignmentOperator()))))), // exclude direct assignment
-                      unless(hasParent(implicitCastExpr(hasParent(varDecl())))),                              // exclude direct initialization
                       unless(hasParent(varDecl()))                                                            // exclude direct initialization
                       )
                       .bind("expression");
@@ -33,7 +35,7 @@ auto callFpFunc = callExpr(
 auto calls = expr(anyOf(callExpr(), cxxMemberCallExpr(), cxxOperatorCallExpr()));
 auto arth = expr(anyOf(unaryOperator(), binaryOperator(), calls));
 
-auto nonSimpleExpr = expr(allOf(hasAncestor(expr(allOf(calls, hasAncestor(stmt(unless(expr())).bind("stmt"))))), arth));
+auto nonSimpleExpr = expr(allOf(hasAncestor(expr(allOf(calls, hasAncestor(rootStmt.bind("stmt"))))), arth));
 
 auto paramOfCall = callExpr(forEachArgumentWithParam(nonSimpleExpr.bind("expression"), parmVarDecl(hasType(realFloatingPointType()))));
 // auto paramOfCall = expr(allOf(nonSimpleExpr, hasType(realFloatingPointType()), hasAncestor(callExpr()))).bind("expression");
@@ -49,32 +51,53 @@ auto target = stmt(eachOf(paramOfCall, RetStmtPat, callFpFunc));
 class ParamPatHandler : public MatchHandler
 {
 public:
+    std::set<const Stmt*> rootStmt;
+    void addAsRoot(const Stmt* stmt) {
+        std::vector<const Stmt*> toBeDel;
+        for(auto root : rootStmt) {
+            if(stmt->getSourceRange().fullyContains(root->getSourceRange())) {
+                toBeDel.push_back(root);
+            }
+        }
+        for(auto del : toBeDel) {
+            rootStmt.erase(del);
+        }
+        rootStmt.insert(stmt);
+    }
+    bool isRoot(const Stmt* stmt) {
+        return rootStmt.count(stmt)!=0;
+    }
+
     virtual void onEndOfTranslationUnit()
     {
-        ExprReplacementHelper helper;
+        ExtractionPrinterHelper helper;
         auto exts = extractions;
-        std::sort(exts.begin(), exts.end());
 
         std::ostringstream out;
         const ExpressionExtractionRequest *lastExt = NULL;
 
+        std::sort(exts.begin(), exts.end());
         auto unique = std::unique(exts.begin(), exts.end());
         exts.erase(unique, exts.end());
 
         auto extIt = exts.begin();
+        std::string filename;
+        Replacements *Replace;
         while (lastExt != NULL || extIt != exts.end())
         {
+            if(lastExt==NULL) {
+                filename = extIt->manager->getFilename(extIt->statement->getBeginLoc()).str();
+                Replace = &ReplaceMap[filename];
+            }
+
             if (lastExt != NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
             {
                 out.flush();
+                
                 std::string parmDef = out.str();
-                auto filename = lastExt->manager->getFilename(lastExt->statement->getBeginLoc()).str();
                 Replacement Rep1(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
-                std::string stmt_Str = print(lastExt->expression, &helper);
-                Replacement Rep2(*lastExt->manager, lastExt->expression, stmt_Str);
-                Replacements &Replace = ReplaceMap[filename];
-                llvm::Error err1 = Replace.add(Rep1);
-                llvm::Error err2 = Replace.add(Rep2);
+                llvm::Error err1 = Replace->add(Rep1);
+
                 lastExt = NULL;
                 out.str("");
             }
@@ -82,13 +105,21 @@ public:
             {
                 std::string parTmp = randomIdentifier("paramTmp");
                 out << "const " << extIt->type.getAsString()
-                    << " " << parTmp << " = " << print(extIt->expression, &helper) << ";" << std::endl;
+                    << " " << parTmp << " = " << print(extIt->expression, &helper) << ";\n";
                 helper.addShortcut(extIt->expression, parTmp); // must after the above line
+
+                if(isRoot(extIt->expression)) {
+                    std::string stmt_Str = print(extIt->expression, &helper);
+                    Replacement Rep2(*extIt->manager, extIt->expression, stmt_Str);
+                    llvm::Error err2 = Replace->add(Rep2);
+                }
+                
                 lastExt = &*extIt;
                 extIt++;
             }
         }
         extractions.clear();
+        rootStmt.clear();
     }
 
     ParamPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
@@ -106,6 +137,7 @@ public:
             type = formal->getType();
         // actual->dumpColor();
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
+        addAsRoot(actual);
     }
 };
 
@@ -123,7 +155,7 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool);
+    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass Two: normalize call to floating point functions");
 
     ParamPatHandler handler(tool.GetReplacements());
 

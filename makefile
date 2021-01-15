@@ -18,16 +18,22 @@ passOne: normalization/passOne.cpp
 passTwo: normalization/passTwo.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passTwo.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passTwo
 
+passThree: normalization/passThree.cpp
+	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passThree.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passThree
+
+
 base=./test
 fn=test.cpp
-test: passZero passOne passTwo
+test: passZero passOne passTwo passThree
 	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
 	./bin/passZero ${base}/derived/${fn}
 	./bin/passOne ${base}/derived/${fn}
 	./bin/passTwo ${base}/derived/${fn}
+	./bin/passThree ${base}/derived/${fn}
 
 testonly:
 	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
 	./bin/passZero ${base}/derived/${fn}
 	./bin/passOne ${base}/derived/${fn}
 	./bin/passTwo ${base}/derived/${fn}
+	./bin/passThree ${base}/derived/${fn}

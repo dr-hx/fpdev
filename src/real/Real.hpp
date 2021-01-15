@@ -33,13 +33,17 @@
 
 #define real_likely(x) __builtin_expect((x), 1)
 #define real_unlikely(x) __builtin_expect((x), 0)
+typedef unsigned long uint64;
 
 #define PUSH_HEAD(nh, h) \
     nh->next = h;        \
     h = nh;
 #define POP_HEAD(h) h = h->next;
 
-#define KEEP_ORIGINAL true
+//#define KEEP_ORIGINAL true
+// #define DELEGATE_TO_POOL true
+#define KEY_SHIFT(k) (((uint64)k)>>3)
+
 
 namespace real
 {
@@ -91,7 +95,7 @@ namespace real
             }
 
         public:
-            inline value_ptr get()
+            value_ptr get()
             {
                 Slot *slot;
                 if (real_unlikely(availableHead == nullptr))
@@ -104,7 +108,7 @@ namespace real
                 return slot->value;
             }
 
-            inline void put(value_ptr pt)
+            void put(value_ptr pt)
             {
                 Slot *slot;
                 if (real_unlikely(usedHead == nullptr))
@@ -163,8 +167,6 @@ namespace real
     using RealPool = util::ValuePool<RealType>;
 
 
-// #define DELEGATE_TO_POOL true
-
     template <typename Key, typename RealType, int cacheSize = 256, int mask = cacheSize - 1>
     class VariableMap
     {
@@ -195,14 +197,14 @@ namespace real
     public:
         RealType &operator[](Key address)
         {
-            int index = ((long)address) & mask;
+            int index = KEY_SHIFT(address) & mask;
             RealCache &c = cache[index];
             if (c.address != address)
             {
 #ifdef DELEGATE_TO_POOL
                 RealType &ptr = *map[address];
 #else
-                RealType &ptr = map[address];
+                RealType &ptr = map[KEY_SHIFT(address)];
 #endif
                 c.address = address;
                 c.real_ptr = &ptr;
@@ -215,12 +217,12 @@ namespace real
             __value_ptr vp = RealPool<RealType>::INSTANCE.get();
             map[address] = vp;
 #else
-            map[address]; // create a real with default constructor
+            map[KEY_SHIFT(address)]; // create a real with default constructor
 #endif
         }
         void undef(Key address)
         {
-            int index = ((long)address) & mask;
+            int index = KEY_SHIFT(address) & mask;
             RealCache &c = cache[index];
             if (c.address == address)
             {
@@ -228,11 +230,11 @@ namespace real
                 c.real_ptr = nullptr;
             }
 #ifdef DELEGATE_TO_POOL
-            auto it = map.find(address);
+            auto it = map.find(KEY_SHIFT(address));
             RealPool<RealType>::INSTANCE.put(it->second);
             map.erase(it);
 #else
-            map.erase(address);
+            map.erase(KEY_SHIFT(address));
 #endif
         }
     };

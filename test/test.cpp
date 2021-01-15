@@ -1,10 +1,14 @@
 // #include <stdlib.h>
 // #include <stdio.h>
 
+#define HELLO d + x
+
+#pragma K
 int main(int argc, char const *argv[])
 {
     if (double d = 0; double x = 5)
     {
+        HELLO;
     }
 
     int *p;
@@ -15,12 +19,13 @@ int main(int argc, char const *argv[])
     {
     }
 
+    
     double t;
     for (double u = (0.0, t = 1);;)
         ;
     for (t = 0.0, *p = 1;;)
         ;
-
+    
     switch (int c = 1)
     {
     case 1:
@@ -58,6 +63,7 @@ FP f(FP x, int y)
         Test tt;
         return tt + x + 2;
     }
+    x++;
     return x + 1;
 }
 
@@ -70,15 +76,18 @@ void testPassOne() {
     double x;
     for(x=0;x++<6;x++);
 
-    while(x=5<7);
+    while(x=5<7) x=x=x++;
 }
 
 double testPassTwo(double x)
 {
-    double y = testPassTwo(1);
+    testPassTwo(x);
+    testPassTwo(x)+1;
+    x = testPassTwo(x);
+    x = true ? testPassTwo(1) + 1 : testPassTwo(2);
+    double y = testPassTwo(x);
+    double z = testPassTwo(x) + testPassTwo(x+1);
     if (testPassTwo(x) > 0)
-    {
-        return x; /*F*/
-    }             /*R*/
-    return x;
+        return testPassTwo(2); /*F*/
+    return testPassTwo(x)+1;
 }

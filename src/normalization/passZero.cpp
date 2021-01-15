@@ -10,16 +10,24 @@ using namespace clang::tooling;
 
 static llvm::cl::OptionCategory ScDebugTool("ScDebug Normalization Tool");
 
-// Pass Zero - NullStmt & EmptyChild
-// 1. DeclStmt in if condition, loop init, switch condition should be moved out
-// 2. Flatten multiple decls
+// Pass Zero - turn empty or single statement into compound statement
 auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
 
-auto singleStmt = stmt(
-    unless(expr()), 
-    unless(declStmt()),
-    unless(hasParent(compoundStmt())), 
-    anyOf(nullStmt(), unless(compoundStmt()))).bind("stmt");
+// auto singleStmt = stmt(
+//     // unless(expr()), 
+//     unless(compoundStmt()),
+//     unless(declStmt()),
+//     unless(hasParent(compoundStmt())),
+//     unless(hasParent(expr())), 
+//     anyOf(nullStmt(), unless(compoundStmt()))).bind("stmt");
+
+auto hangThen = ifStmt(hasThen(stmt(unless(compoundStmt())).bind("stmt")));
+auto elseThen = ifStmt(hasElse(stmt(unless(compoundStmt())).bind("stmt")));
+auto hangForBody = forStmt(hasBody(stmt(unless(compoundStmt())).bind("stmt")));
+auto hangWhileBody = whileStmt(hasBody(stmt(unless(compoundStmt())).bind("stmt")));
+auto hangDoBody = doStmt(hasBody(stmt(unless(compoundStmt())).bind("stmt")));
+
+auto hangStmt = stmt(eachOf(hangThen,elseThen,hangForBody,hangWhileBody,hangDoBody));
 
 auto fpDecl = declStmt(has(varDecl(hasType(realFloatingPointType()))));
 auto IfStmtPat = ifStmt(anyOf(hasConditionVariableStatement(fpDecl), hasInitStatement(fpDecl))).bind("stmt");
@@ -30,7 +38,8 @@ auto WhileStmtPat = whileStmt(has(fpDecl.bind("condVar")));
 
 auto stmtWithScope = stmt(anyOf(IfStmtPat,ForStmtPat,WhileStmtPat)).bind("stmt");
 
-auto target = stmt(anyOf(singleStmt, stmtWithScope));
+
+auto target = stmt(eachOf(stmtWithScope, hangStmt));
 
 class SingleStmtPatHandler : public MatchHandler
 {
@@ -82,9 +91,14 @@ public:
                 stmtVector.erase(E);
                 if(isa<NullStmt>(E)) {
                     OS << "{}";
-                } else {
+                }
+                else {
                     OS << "{";
+                    // OS << "//" << std::string(E->getStmtClassName()) <<"\n";
                     E->printPretty(OS, this, PrintingPolicy(LangOptions()));
+                    if(isa<Expr>(E)) {
+                        OS << ";";
+                    }
                     OS << "}";
                 }
                 return true;
@@ -105,8 +119,15 @@ public:
             std::string str;
             llvm::raw_string_ostream stream(str);
             s->printPretty(stream, &helper, PrintingPolicy(LangOptions()));
+            // if(isa<Expr>(s)) {
+            //     Replacement Rep(*Manager, s, stream.str());
+            //     llvm::Error err = Replace->add(Rep);
+            //     Replacement Rep2(*Manager, s->getEndLoc().getLocWithOffset(1), 1, ""); // this intends to clear ";"
+            //     llvm::Error err2 = Replace->add(Rep2);
+            // } else {
             Replacement Rep(*Manager, s, stream.str());
             llvm::Error err = Replace->add(Rep);
+            // }
         }
         rootStmt.clear();
         stmtVector.clear();
@@ -116,8 +137,7 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool);
-
+    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass Zero: turn empty and hanging statements");
     tool.add<decltype(target), SingleStmtPatHandler>(target);
 
     tool.run();

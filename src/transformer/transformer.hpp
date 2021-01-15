@@ -23,17 +23,17 @@ using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-class ExprReplacementHelper : public PrinterHelper {
+class ExtractionPrinterHelper : public PrinterHelper {
 protected:
-    std::unordered_map<const Stmt*, std::string> exprMap;
+    std::unordered_map<const Stmt*, std::string> extractionMap;
 public:
     void addShortcut(const Expr* e, const std::string& s) {
-        exprMap[e] = s;
+        extractionMap[e] = s;
     }
 
     virtual bool handledStmt(Stmt* E, raw_ostream& OS) {
-        auto r = exprMap.find(E);
-        if(r==exprMap.end()) return false;
+        auto r = extractionMap.find(E);
+        if(r==extractionMap.end()) return false;
         else {
             OS << r->second;
             return true;
@@ -120,6 +120,93 @@ public:
     }
 };
 
+class RecursiveRewriteMatchHandler : public MatchHandler {
+protected:
+    std::vector<ExpressionExtractionRequest> extractionRequests;
+    std::set<const Stmt*> rootExpressions;
+    void addAsRoot(const Stmt* stmt) {
+        std::vector<const Stmt*> toBeDel;
+        for(auto root : rootExpressions) {
+            if(stmt->getSourceRange().fullyContains(root->getSourceRange())) {
+                toBeDel.push_back(root);
+            }
+        }
+        for(auto del : toBeDel) {
+            rootExpressions.erase(del);
+        }
+        rootExpressions.insert(stmt);
+    }
+    bool isRoot(const Stmt* stmt) {
+        return rootExpressions.count(stmt)!=0;
+    }
+
+public:
+
+    RecursiveRewriteMatchHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
+
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const Expr *actual = Result.Nodes.getNodeAs<Expr>("expression"); // the expression that is going to be extracted out
+        const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("statement"); // the statement that contains the expression
+        QualType type = actual->getType();
+        extractionRequests.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
+        addAsRoot(actual);
+    }
+
+    virtual void onEndOfTranslationUnit()
+    {
+        ExtractionPrinterHelper helper;
+        std::sort(extractionRequests.begin(), extractionRequests.end());
+        auto unique = std::unique(extractionRequests.begin(), extractionRequests.end());
+        extractionRequests.erase(unique, extractionRequests.end());
+
+        std::ostringstream out;
+        const ExpressionExtractionRequest *lastExtractionRequest = NULL;
+
+        std::string filename;
+        Replacements *Replace;
+        auto requestIterator = extractionRequests.begin();
+
+        while (lastExtractionRequest != NULL || requestIterator != extractionRequests.end())
+        {
+            if(lastExtractionRequest==NULL) {
+                filename = requestIterator->manager->getFilename(requestIterator->statement->getBeginLoc()).str();
+                Replace = &ReplaceMap[filename];
+            }
+
+            if (lastExtractionRequest != NULL && (requestIterator == extractionRequests.end() || lastExtractionRequest->statement != requestIterator->statement))
+            {
+                out.flush();
+                std::string extractedStmts = out.str();
+                convertStatement(Replace, lastExtractionRequest->manager, extractedStmts, lastExtractionRequest->statement, helper);
+                lastExtractionRequest = NULL;
+                out.str("");
+            }
+            else
+            {
+                convertSubExpression(Replace, *requestIterator, helper);
+                if(isRoot(requestIterator->expression)) {
+                    convertRootExpression(Replace, requestIterator->manager, requestIterator->expression, helper);
+                }
+                lastExtractionRequest = &*requestIterator;
+                requestIterator++;
+            }
+        }
+        extractionRequests.clear();
+        rootExpressions.clear();
+    }
+    virtual void convertStatement(Replacements *Replace, const SourceManager* manager, const std::string& extracted, const Stmt* statement, ExtractionPrinterHelper &helper) {
+        Replacement Rep1(*manager, statement->getBeginLoc(), 0, extracted);
+        llvm::Error err1 = Replace->add(Rep1);
+    }
+    virtual void convertRootExpression(Replacements *Replace, const SourceManager* manager, const Stmt* rootExpression, ExtractionPrinterHelper &helper) {
+        std::string stmt_Str = print(rootExpression, &helper);
+        Replacement Rep2(*manager, rootExpression, stmt_Str);
+        llvm::Error err2 = Replace->add(Rep2);
+    }
+    virtual void convertSubExpression(Replacements *Replace, const ExpressionExtractionRequest &request, ExtractionPrinterHelper &helper) = 0;
+};
+
 class CodeTransformationTool
 {
 protected:
@@ -127,11 +214,13 @@ protected:
     RefactoringTool Tool;
     MatchFinder Finder;
     std::vector<MatchHandler*> handlerVector;
+    std::string toolName;
 
 public:
-    CodeTransformationTool(int argc, const char **argv, llvm::cl::OptionCategory category) : Options(argc, argv, category),
+    CodeTransformationTool(int argc, const char **argv, llvm::cl::OptionCategory category, std::string name = "Unnamed Tool") : Options(argc, argv, category),
                                                                                              Tool(Options.getCompilations(), Options.getSourcePathList()),
-                                                                                             Finder()
+                                                                                             Finder(),
+                                                                                             toolName(name)
     {
     }
 
@@ -152,13 +241,14 @@ public:
     {
         HandlerType* h = new HandlerType(Tool.getReplacements());
         handlerVector.push_back(h);
-        Finder.addMatcher(matcher, h);
+        add(matcher, *h);
     }
     
     template <typename ASTMatcherType,typename HandlerType>
     void add(const ASTMatcherType &matcher, HandlerType& handler)
     {
-        Finder.addMatcher(matcher, &handler);
+        // TK_IgnoreImplicitCastsAndParentheses
+        Finder.addMatcher(traverse(TK_IgnoreUnlessSpelledInSource,matcher), &handler);
     }
 
     int run()
@@ -190,7 +280,7 @@ public:
             const FileEntry *Entry = Sources.getFileEntryForID(I->first);
             std::error_code err;
             llvm::raw_fd_ostream out(Entry->getName(), err);
-            out << "// Rewrite " << Entry->getName() << "\n";
+            out << "// Rewrite by " << toolName << "\n";
             I->second.write(out);
             out.flush();
             out.close();

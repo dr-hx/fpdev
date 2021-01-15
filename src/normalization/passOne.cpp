@@ -134,7 +134,7 @@ public:
             Replacement RepCond(*(Result.SourceManager), cond, "");
             llvm::Error err2 = Replace.add(RepCond);
             bodyOut << "{\n";
-            bodyOut << "if(!(" << print(cond) << ")) break;\n";
+            bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
             Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
             llvm::Error errBodyF = Replace.add(RepBodyF);
@@ -194,7 +194,7 @@ public:
             Replacement RepCond(*(Result.SourceManager), cond, "true");
             llvm::Error err2 = Replace.add(RepCond);
             bodyOut << "{\n";
-            bodyOut << "if(!(" << print(cond) << ")) break;\n";
+            bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
             Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
             llvm::Error errBodyF = Replace.add(RepBodyF);
@@ -222,7 +222,7 @@ public:
 
         Replacement RepCond(*(Result.SourceManager), cond, "true");
         llvm::Error err2 = Replace.add(RepCond);
-        bodyOut << "if(!(" << print(cond) << ")) break;\n";
+        bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
         bodyOut << "}";
         // because body must be something like {...}, we replace the open bracket
         Replacement RepBodyF(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
@@ -243,7 +243,7 @@ auto MultiDeclPat_DeclInBlock = declStmt(allOf(unless(hasSingleDecl(anything()))
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool);
+    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass One: normalize control structures");
     tool.add<decltype(IfStmtPat), IfStmtPatHandler>(IfStmtPat);
     // tool.add<decltype(SwitchStmtPat), IfStmtPatHandler>(SwitchStmtPat);
     tool.add<decltype(ForStmtPat), ForStmtPatHandler>(ForStmtPat);
