@@ -126,6 +126,7 @@ struct StmtInFile {
     StmtInFile(const Stmt* s, const SourceManager* m) : statement(s), rangeInFile(m->getFileLoc(s->getBeginLoc()),m->getFileLoc(s->getEndLoc())) {
     }
     bool cover(const StmtInFile &r) {
+        if(rangeInFile.isInvalid()) return true;
         return this->rangeInFile.fullyContains(r.rangeInFile);
     }
 };
@@ -136,7 +137,7 @@ struct NonOverlappedStmts {
     void add(StmtInFile stmtInFile) {
         int size = roots.size();
         bool cover = false;
-        for(int i=0;i<size;i++) {
+        for(int i=0;i<size;) {
             if(stmtInFile.cover(roots[i])) {
                 if(size-1>i) {
                     roots[i] = roots[size-1];
@@ -144,8 +145,9 @@ struct NonOverlappedStmts {
                 size --;
             } else if(roots[i].cover(stmtInFile)) {
                 cover = true;
+                assert(size==roots.size());
                 break;
-            }
+            } else i++;
         }
         
         for(int i=roots.size(); i>size; i--) {
@@ -170,6 +172,10 @@ struct NonOverlappedStmts {
             if(s.statement==stmt) return true;
         }
         return false;
+    }
+
+    const std::vector<StmtInFile>& operator()() {
+        return roots;
     }
 };
 

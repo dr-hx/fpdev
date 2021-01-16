@@ -31,6 +31,8 @@
 #include <sys/time.h>
 #include <iostream>
 
+
+
 #define real_likely(x) __builtin_expect((x), 1)
 #define real_unlikely(x) __builtin_expect((x), 0)
 typedef unsigned long uint64;
@@ -43,7 +45,6 @@ typedef unsigned long uint64;
 //#define KEEP_ORIGINAL true
 // #define DELEGATE_TO_POOL true
 #define KEY_SHIFT(k) (((uint64)k)>>3)
-
 
 namespace real
 {

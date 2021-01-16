@@ -2,6 +2,9 @@ vpath %.cpp src src/normalization src/transformer src/instrumentation
 vpath %h src/util
 vpath %hpp src/util src/transformer
 
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+mkfile_dir := $(dir $(mkfile_path))
+
 CC = /usr/bin/clang++
 CLANG_LIBS = -lLLVM -lLLVMCodeGen -llldYAML -lclang -lclangAST -lclangASTMatchers -lclangAnalysis -lclangApplyReplacements -lclangBasic -lclangChangeNamespace -lclangCodeGen -lclangCrossTU -lclangDependencyScanning -lclangDirectoryWatcher -lclangDoc -lclangDriver -lclangDynamicASTMatchers -lclangEdit -lclangFormat -lclangFrontend -lclangFrontendTool -lclangHandleCXX -lclangHandleLLVM -lclangIncludeFixer -lclangIncludeFixerPlugin -lclangIndex -lclangLex -lclangMove -lclangParse -lclangQuery -lclangReorderFields -lclangRewrite -lclangRewriteFrontend -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend -lclangTesting -lclangTidy -lclangTooling -lclangToolingASTDiff -lclangToolingCore -lclangToolingInclusions -lclangToolingRefactoring -lclangToolingSyntax -lclangTransformer -lclangdSupport
 INCL_PATHS = -I/usr/local/Cellar/llvm/11.0.0/include -I.
@@ -23,6 +26,10 @@ passTwo: normalization/passTwo.cpp
 
 passThree: normalization/passThree.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passThree.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passThree
+
+passClean: normalization/passClean.cpp
+	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passClean.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passClean
+
 
 normalization : passZero, passOne, passTwo, passThree
 
@@ -47,8 +54,10 @@ testnormonly:
 	rm -r ${base}/derived; mkdir ${base}/derived; cp ${base}/${fn} ${base}/derived/${fn}
 	./bin/passZero ${base}/derived/${fn} ${TOOL_ARGS}
 	./bin/passOne ${base}/derived/${fn} ${TOOL_ARGS}
-	# ./bin/passTwo ${base}/derived/${fn} ${TOOL_ARGS}
-	# ./bin/passThree ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passTwo ${base}/derived/${fn} ${TOOL_ARGS}
+	./bin/passThree ${base}/derived/${fn} ${TOOL_ARGS}
+	# ./bin/passClean ${base}/derived/${fn} ${TOOL_ARGS}
 
 testinsonly: testnormonly
 	./bin/turnFpArith ${base}/derived/${fn} ${TOOL_ARGS}
+	# ./bin/passClean ${base}/derived/${fn} ${TOOL_ARGS}

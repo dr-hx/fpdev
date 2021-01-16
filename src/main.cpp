@@ -4,7 +4,20 @@
 
 
 #include "real/Real.hpp"
-#include "transformer/transformer.hpp"
+#include "clang/AST/AST.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Basic/FileManager.h"
+#include "clang/Basic/SourceManager.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendActions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/Refactoring.h"
+#include "clang/Tooling/Tooling.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <string>
 
@@ -21,24 +34,17 @@ public:
 
   virtual void run(const MatchFinder::MatchResult &Result) {
     // The matched 'if' statement was bound to 'ifStmt'.
-    if (const IfStmt *IfS = Result.Nodes.getNodeAs<clang::IfStmt>("ifStmt")) {
-        auto filename = Result.SourceManager->getFilename(IfS->getBeginLoc());
-      Replacements &Replace = ReplaceMap[filename.str()];
+    const Stmt *stmt;
+    stmt = Result.Nodes.getNodeAs<Stmt>("ifStmt1");
+    if(stmt!=NULL) {
+      llvm::outs()<<"ifStmt\t1: \n";
+      stmt->dumpColor();
+    }
 
-      const Stmt *Then = IfS->getThen();
-      Replacement Rep(*(Result.SourceManager), Then->getBeginLoc(), 0,
-                      "// the 'if' part\n");
-      Replace.add(Rep);
-
-      Rep = Replacement(*(Result.SourceManager), Then->getBeginLoc().getLocWithOffset(-1), 0,
-                      "// the 'if' part again\n");
-      Replace.add(Rep);
-
-      if (const Stmt *Else = IfS->getElse()) {
-        Replacement Rep(*(Result.SourceManager), Else->getBeginLoc(), 0,
-                        "// the 'else' part\n");
-        Replace.add(Rep);
-      }
+    stmt = Result.Nodes.getNodeAs<Stmt>("switchStmt2");
+    if(stmt!=NULL) {
+      llvm::outs()<<"switchStmt\t2: \n";
+      stmt->dumpColor();
     }
   }
 
@@ -54,7 +60,8 @@ int main(int argc, const char **argv) {
   IfStmtHandler HandlerForIf(Tool.getReplacements());
 
   MatchFinder Finder;
-  Finder.addMatcher(ifStmt().bind("ifStmt"), &HandlerForIf);
+  Finder.addMatcher(ifStmt().bind("ifStmt1"), &HandlerForIf);
+  Finder.addMatcher(switchStmt().bind("switchStmt2"), &HandlerForIf);
 
   // Run the tool and collect a list of replacements. We could call runAndSave,
   // which would destructively overwrite the files with their new contents.

@@ -15,7 +15,7 @@ static llvm::cl::OptionCategory ScDebugTool("ScDebug Tool");
 // 2. fp parameters of a call to a fp func must be atomic
 // 3. all returned floating point values must be variables or constants
 
-auto fpFunc = functionDecl(anyOf(hasType(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
+auto fpFunc = functionDecl(anyOf(returns(realFloatingPointType()), hasAnyParameter(hasType(realFloatingPointType()))));
 // auto fpCxxMemFpFunc = cxxMethodDecl(anyOf(hasType(realFloatingPointType()),hasAnyParameter(hasType(realFloatingPointType()))));
 
 auto rootStmt = stmt(anyOf(unless(expr()), expr(hasParent(compoundStmt()))));

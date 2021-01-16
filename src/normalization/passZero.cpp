@@ -38,36 +38,46 @@ auto WhileStmtPat = whileStmt(has(fpDecl.bind("condVar")));
 
 auto stmtWithScope = stmt(anyOf(IfStmtPat,ForStmtPat,WhileStmtPat)).bind("stmt");
 
+auto multipleFpDecl = declStmt(unless(hasSingleDecl(anything())),fpDecl).bind("multiple");
 
-auto target = stmt(eachOf(stmtWithScope, hangStmt));
+auto target = stmt(eachOf(stmtWithScope, hangStmt, multipleFpDecl));
 
 // flatten
-auto multipleFpDecl = declStmt(unless(hasSingleDecl(anything())),fpDecl);
 
 class SingleStmtPatHandler : public MatchHandler
 {
 public:
     SingleStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
     std::set<const Stmt*> stmtVector;
+    std::set<const DeclStmt*> flattenVector;
     virtual void run(const MatchFinder::MatchResult &Result)
     {
         Manager = Result.SourceManager;
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
 
-        if(isa<WhileStmt>(stmt)) {
-            WhileStmt* ws = (WhileStmt*)stmt;
-            if(ws->getConditionVariableDeclStmt()!=NULL) {
-                const DeclStmt* decl = ws->getConditionVariableDeclStmt();
-                const DeclStmt* condVar = Result.Nodes.getNodeAs<DeclStmt>("condVar");
-                if(decl==condVar) { // inexact if the matching is unordered
-                    stmtVector.insert(stmt);
-                    addAsNonOverlappedStmt(stmt, Result.SourceManager);
+        if(stmt!=NULL) {
+            if(isa<WhileStmt>(stmt)) {
+                WhileStmt* ws = (WhileStmt*)stmt;
+                if(ws->getConditionVariableDeclStmt()!=NULL) {
+                    const DeclStmt* decl = ws->getConditionVariableDeclStmt();
+                    const DeclStmt* condVar = Result.Nodes.getNodeAs<DeclStmt>("condVar");
+                    if(decl==condVar) { // inexact if the matching is unordered
+                        stmtVector.insert(stmt);
+                        addAsNonOverlappedStmt(stmt, Result.SourceManager);
+                    }
                 }
+            } else {
+                stmtVector.insert(stmt);
+                addAsNonOverlappedStmt(stmt, Result.SourceManager);
             }
         } else {
-            stmtVector.insert(stmt);
-            addAsNonOverlappedStmt(stmt, Result.SourceManager);
+            const DeclStmt* decl = Result.Nodes.getNodeAs<DeclStmt>("multiple");
+            if(decl!=NULL) {
+                flattenVector.insert(decl);
+                addAsNonOverlappedStmt(decl, Result.SourceManager);
+            }
         }
+
 
     }
 
@@ -92,6 +102,9 @@ public:
                     OS << "}";
                 }
                 return true;
+            } else if(isa<DeclStmt>(E)) {
+                OS << flatten_declStmt((DeclStmt*)E);
+                return true;
             }
             return false;
         }
@@ -102,8 +115,7 @@ public:
         Replacements *Replace = NULL;
         ParnStmtHelper helper(stmtVector);
         int count = 0;
-        for(auto s : this->nonOverlappedStmts.roots) {
-            printf("%d\n", count++);
+        for(auto s : this->nonOverlappedStmts()) {
             if(Replace==NULL) {
                 std::string fn = (Manager->getFilename(s.rangeInFile.getBegin()).str());
                 Replace = &ReplaceMap[fn];

@@ -13,12 +13,14 @@ int main(int argc, char const *argv[])
 
     *p = 5;
 
+
     for (int i = 0, j = 0;; i++, --j)
     {
     }
 
     
     double t;
+    double &q = t;
     for (double u = (0.0, t = 1);;)
         ;
     for (t = 0.0, *p = 1;;)
@@ -76,9 +78,9 @@ void testPassOne() {
     while(x=5<7) x=x=x++;
 }
 
-double testPassTwo(double x)
+double testPassTwo(int x)
 {
-    double &a = x;
+    double a = x;
     double &b = a;
     testPassTwo(x);
     testPassTwo(x)+1;
