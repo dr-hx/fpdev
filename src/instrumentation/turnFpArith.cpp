@@ -1,7 +1,7 @@
 #include <string>
 #include <set>
-#include "util/random.h"
-#include "transformer/transformer.hpp"
+#include "../util/random.h"
+#include "../transformer/transformer.hpp"
 
 using namespace clang;
 using namespace clang::ast_matchers;
