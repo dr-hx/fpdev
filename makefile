@@ -18,7 +18,13 @@ LIB_PATHS = -L/usr/local/opt/llvm/lib
 COMPILER_FLAGS = -std=c++17
 LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
 
-TOOL_ARGS = -- ${COMPILER_FLAGS} ${INCL_PATHS} -I/usr/local/include -I/Library/Developer/CommandLineTools/usr/include/c++/v1
+# SYS_ROOT = -internal-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1 -internal-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include -internal-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/12.0.0/include -internal-externc-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -internal-externc-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include
+
+# TOOL_ARGS = -- ${COMPILER_FLAGS}  -m64 -isysroot "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ${SYS_ROOT} -mmacosx-version-min=11.0.0  -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -stdlib=libc++
+
+# EXTRA_ARG = -- --target=x86_64-apple-macosx11.0.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -I/usr/local/include -stdlib=libc++ -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+
+# EXT = --extra-arg-before="--target=x86_64-apple-macosx11.0.0 -nostdinc -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include"
 
 info:
 	@echo ${MAKE_DIR}
@@ -68,4 +74,4 @@ testnormonly:
 
 testinsonly: testnormonly
 	./bin/turnFpArith ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	# ./bin/passClean ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
+	./bin/passClean ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}

@@ -841,7 +841,7 @@ protected:
                     std::string preCode;
                     llvm::raw_string_ostream stream(preCode);
 
-                    stream <<"/* " << scope->varDecls.size() << "\n"; // for debugging
+                    stream <<"/*\n"; // for debugging
                     for (auto v : scope->varDecls)
                     {
                         if (varUse.isSharedInteresting(v->decl))
@@ -871,7 +871,29 @@ protected:
             sbreak->parent->collectVariablesFrom(sbreak, vars);
             std::string preCode;
             llvm::raw_string_ostream stream(preCode);
-            stream <<"/* " << vars.size() <<"\n"; // for debugging
+            stream <<"/*\n"; // for debugging
+
+            if(sbreak->isSemiBreak==false) {
+                auto retStmt = (ReturnStmt*) sbreak->statement;
+                auto retVal = retStmt->getRetValue();
+                if(isa<DeclRefExpr>(retVal)) {
+                    auto ref = (DeclRefExpr*)retVal;
+                    auto valDecl = ref->getDecl();
+                    if(isa<VarDecl>(valDecl)) {
+                        VarDecl* var = (VarDecl*) valDecl;
+                        if(varUse.isLocalInteresting(var)) {
+                            // it is safe to push this real on the stack
+                        } else if(varUse.isSharedInteresting(var)) {
+                            // generally, we should generate a static var for this case. Or we can analyze var use in 
+                            auto retName = randomIdentifier("retTmp");
+                            stream << "static SVal " << retName <<" = 0; // initialize once\n";
+                            stream << retName << " = " << PREFIX_SHARED << var->getNameAsString() <<";\n";
+                        }
+                    }
+                }
+
+            }
+
             for(auto v : vars) {
                 if(varUse.isSharedInteresting(v->decl)) {
                     stream << "UNDEF(" << v->decl->getNameAsString() <<");\n";
