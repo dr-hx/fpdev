@@ -190,7 +190,7 @@ public:
         std::ostringstream bodyOut;
 
         if (cond != NULL)
-        {
+        { 
             Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
             llvm::Error err2 = Replace.add(RepCond);
             bodyOut << "{\n";

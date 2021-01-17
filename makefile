@@ -31,7 +31,7 @@ passClean: normalization/passClean.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passClean.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passClean
 
 
-normalization : passZero, passOne, passTwo, passThree
+normalization : passZero passOne passTwo passThree
 
 turnFpArith: instrumentation/turnFpArith.cpp
 	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g instrumentation/turnFpArith.cpp ${LIB_PATHS} ${LIBS} -o ../bin/turnFpArith

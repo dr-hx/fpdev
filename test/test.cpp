@@ -3,6 +3,15 @@
 
 #define HELLO d + x
 
+// int main(int argc, char const *argv[])
+// {
+//     double x;
+//     double &y = x;
+
+// return 0;
+// }
+
+
 #pragma K
 int main(int argc, char const *argv[])
 {
@@ -51,7 +60,6 @@ public:
     double operator+(double x)
     {
         return test(x);
-        ;
     }
 };
 

@@ -82,11 +82,13 @@ struct ScopeItem : public StmtInFile
                                                                parent(NULL) {}
     ScopeItem(const Stmt *s, const SourceManager *m) : StmtInFile(s, m), parent(NULL) {}
 
-    virtual bool insert(ScopeItem *scope) { 
-        return false; 
+    virtual bool insert(ScopeItem *scope)
+    {
+        return false;
     }
 
-    virtual bool isRoot() {return false;}
+    virtual bool isRoot() { return false; }
+    virtual ~ScopeItem() {}
 
     bool cover(const StmtInFile &r)
     {
@@ -101,10 +103,14 @@ struct ScopeItem : public StmtInFile
         return rangeInFile.fullyContains(r.rangeInFile);
     }
 
-    // bool isRoot()
-    // {
-    //     return parent == NULL && statement == NULL;
+    // bool after(const StmtInFile& r) {
+    //     return this->rangeInFile.getBegin() > r.rangeInFile.getBegin();
     // }
+
+    // bool after(const VarDeclInFile& r) {
+    //     return this->rangeInFile.getBegin() > r.rangeInFile.getBegin();
+    // }
+
     bool isFuncDecl()
     {
         return parent != NULL && statement == NULL;
@@ -114,19 +120,28 @@ struct ScopeItem : public StmtInFile
         return false;
     }
 
-    virtual void dump(const SourceManager& Manager, unsigned int indent) {
-        if(parent==NULL) {
+    virtual void dump(const SourceManager &Manager, unsigned int indent)
+    {
+        if (parent == NULL)
+        {
             llvm::outs() << "root\n";
-        } else {
-            if(statement==NULL) {
+        }
+        else
+        {
+            if (statement == NULL)
+            {
                 llvm::outs().indent(indent) << "function decl at ";
-            } else {
+            }
+            else
+            {
                 llvm::outs().indent(indent) << statement->getStmtClassName() << " at ";
             }
-                rangeInFile.print(llvm::outs(), Manager);
-                llvm::outs()<<"\n";
+            rangeInFile.print(llvm::outs(), Manager);
+            llvm::outs() << "\n";
         }
     }
+
+    virtual void collectVariablesFrom(ScopeBreak *breakPoint, std::vector<VarDeclInFile *>& results) = 0;
 };
 
 struct ScopeBreak : public ScopeItem
@@ -139,6 +154,13 @@ struct ScopeBreak : public ScopeItem
         else
             isSemiBreak = false;
     }
+
+    virtual bool isClosedScope()
+    {
+        return (isSemiBreak == false);
+    }
+
+    virtual void collectVariablesFrom(ScopeBreak *breakPoint, std::vector<VarDeclInFile *>& results) {}
 };
 struct Scope : public ScopeItem
 {
@@ -164,7 +186,7 @@ struct Scope : public ScopeItem
             reactToSemiBreak = true;
     }
 
-    ~Scope()
+    virtual ~Scope()
     {
         for (auto s : subItems)
         {
@@ -206,9 +228,10 @@ struct Scope : public ScopeItem
         }
         else
         {
-            if(isRoot()) {
+            if (isRoot())
+            {
                 decl->decl->print(llvm::outs());
-                llvm::outs()<<"\n";
+                llvm::outs() << "\n";
             }
             varDecls.push_back(decl);
             decl->declaredScope = this;
@@ -221,27 +244,35 @@ struct Scope : public ScopeItem
 
     virtual bool insert(ScopeItem *scope)
     {
-        if (!isRoot() && !cover(*scope)) {
+        if (!isRoot() && !cover(*scope))
+        {
             return false;
         }
 
         int size = subItems.size();
-        for(int i=0;i<size;) {
-            if(subItems[i]->insert(scope)) {
+        for (int i = 0; i < size;)
+        {
+            if (subItems[i]->insert(scope))
+            {
                 return true;
             }
-            if(scope->cover(*subItems[i])) {
-                if(size-1>i) {
-                    ScopeItem* tmp = subItems[size-1];
-                    subItems[size-1] = subItems[i];
+            if (scope->cover(*subItems[i]))
+            {
+                if (size - 1 > i)
+                {
+                    ScopeItem *tmp = subItems[size - 1];
+                    subItems[size - 1] = subItems[i];
                     subItems[i] = tmp;
                 }
                 size--;
-            } else i++;
+            }
+            else
+                i++;
         }
 
-        for(int i=subItems.size();i>size;i--) {
-            assert(scope->insert(subItems.back())!=false);
+        for (int i = subItems.size(); i > size; i--)
+        {
+            assert(scope->insert(subItems.back()) != false);
             subItems.pop_back();
         }
         // add as child
@@ -254,79 +285,154 @@ struct Scope : public ScopeItem
         return true;
     }
 
-    bool check(const SourceManager& Manager) {
-        if(parent==NULL) {
-            if(varDecls.size()!=0)
+    bool check(const SourceManager &Manager)
+    {
+        if (parent == NULL)
+        {
+            if (varDecls.size() != 0)
+            {
+                llvm::outs() << "root has var decls\n";
+                for (auto v : varDecls)
                 {
-                    llvm::outs() << "root has var decls\n";
-                    for(auto v : varDecls) {
-                        v->rangeInFile.dump(Manager);
-                    }
-                    return false;
+                    v->rangeInFile.dump(Manager);
                 }
+                return false;
+            }
         }
 
-        if(parent!=NULL && statement==NULL) {
-            if(subItems.size()>1)
+        if (parent != NULL && statement == NULL)
+        {
+            if (subItems.size() > 1)
             {
                 llvm::outs() << "function decl has multiple bodies\n";
                 return false;
             }
         }
 
-        if(statement!=NULL) {
-            if(!isa<CompoundStmt>(statement)) {
-                if(varDecls.size()!=0)
+        if (statement != NULL)
+        {
+            if (!isa<CompoundStmt>(statement))
+            {
+                if (varDecls.size() != 0)
                 {
                     llvm::outs() << "non-compound statement has var decls after normalization\n";
                     return false;
                 }
             }
         }
-        for(auto sub : subItems) {
-            if(sub->isScope()) {
-                Scope * s = (Scope*)sub;
-                if(s->check(Manager)==false) return false;
+        for (auto sub : subItems)
+        {
+            if (sub->isScope())
+            {
+                Scope *s = (Scope *)sub;
+                if (s->check(Manager) == false)
+                    return false;
             }
         }
 
         return true;
     }
 
-    virtual void dump(const SourceManager& Manager, unsigned int indent) {
+    virtual void dump(const SourceManager &Manager, unsigned int indent)
+    {
         ScopeItem::dump(Manager, indent);
-        for(auto s : subItems) {
-            s->dump(Manager, indent+4);
+        for (auto s : subItems)
+        {
+            s->dump(Manager, indent + 4);
+        }
+    }
+
+    virtual void collectVariablesFrom(ScopeBreak *breakPoint, std::vector<VarDeclInFile *>& results)
+    {
+        if (isRoot() || isFuncDecl())
+            return;
+
+        for (auto vd : varDecls)
+        {
+            if (vd->rangeInFile.getBegin() < breakPoint->rangeInFile.getBegin())
+            {
+                results.push_back(vd);
+            }
+        }
+
+        if ((breakPoint->isSemiBreak && this->reactToSemiBreak))
+        {
+            return;
+        }
+        else
+        {
+            this->parent->collectVariablesFrom(breakPoint, results);
         }
     }
 };
 
 struct ScopeTree : public Scope
 {
-    std::map<const VarDecl*, VarDeclInFile*> varDeclMap;
-    std::map<const Stmt*, ScopeItem*> stmtMap;
+    std::map<const VarDecl *, VarDeclInFile *> varDeclMap;
+    std::map<const Stmt *, ScopeItem *> stmtMap;
     ScopeTree() : Scope() {}
-    virtual bool isRoot() {return true;}
+    virtual bool isRoot() { return true; }
 
-    virtual bool insert(ScopeItem *scope) {
-        if(Scope::insert(scope)==false) {
+    virtual bool insert(ScopeItem *scope)
+    {
+        if (Scope::insert(scope) == false)
+        {
             llvm::outs() << "failed to insert\n";
             return false;
-        } else {
-            if(scope->statement!=NULL)
+        }
+        else
+        {
+            if (scope->statement != NULL)
                 stmtMap[scope->statement] = scope;
             return true;
         }
     }
 
-    virtual bool addDecl(VarDeclInFile *decl) {
-        if(Scope::addDecl(decl)==false) {
+    virtual bool addDecl(VarDeclInFile *decl)
+    {
+        if (Scope::addDecl(decl) == false)
+        {
             llvm::outs() << "failed to insert\n";
             return false;
-        } else {
+        }
+        else
+        {
             varDeclMap[decl->decl] = decl;
             return true;
         }
+    }
+
+    bool isClosedScope(ScopeItem *target)
+    {
+        if (target->statement == NULL)
+            return true;
+
+        if (isa<IfStmt>(target->statement))
+        {
+            Scope *t = (Scope *)target;
+            for (auto s : t->subItems)
+            {
+                if (isClosedScope(s) == false)
+                    return false;
+            }
+            return true;
+        }
+        else if (isa<CompoundStmt>(target->statement))
+        {
+            Scope *t = (Scope *)target;
+            for (auto s : t->subItems)
+            {
+                if (isClosedScope(s))
+                    return true;
+            }
+            return false;
+        }
+        else if (isa<ReturnStmt>(target->statement))
+        {
+            return true;
+        }
+        else
+            return false;
     }
 };
 
@@ -354,100 +460,119 @@ struct VarUseAnalysis
         return sharedVar.count(v) != 0;
     }
 
-    bool isSharedInteresting(const VarDecl *v) {
+    bool isSharedInteresting(const VarDecl *v)
+    {
         return isInteresting(v) && isShared(v);
     }
 
-    bool isLocalInteresting(const VarDecl *v) {
+    bool isLocalInteresting(const VarDecl *v)
+    {
         return isInteresting(v) && !isShared(v);
     }
 
-    struct iterator {
+    struct iterator
+    {
         decltype(localDeclaredVar.begin()) mainIter;
         decltype(localDeclaredVar.end()) mainEnd;
-        VarUseAnalysis& host;
+        VarUseAnalysis &host;
         bool shared;
 
-        bool operator==(const iterator& r) {
-            return mainIter==r.mainIter && mainEnd==r.mainEnd;
+        bool operator==(const iterator &r)
+        {
+            return mainIter == r.mainIter && mainEnd == r.mainEnd;
         }
-        const VarDecl* operator*() {
+        const VarDecl *operator*()
+        {
             return *mainIter;
         }
 
-        iterator& operator++() {
+        iterator &operator++()
+        {
             mainIter++;
             return *this;
         }
 
-        iterator(VarUseAnalysis& host, bool shared) : 
-            mainIter(host.localDeclaredVar.begin()), 
-            host(host), shared(shared), 
-            mainEnd(host.localDeclaredVar.end()) 
+        iterator(VarUseAnalysis &host, bool shared) : mainIter(host.localDeclaredVar.begin()),
+                                                      host(host), shared(shared),
+                                                      mainEnd(host.localDeclaredVar.end())
         {
-                moveToValid();
+            moveToValid();
         }
 
-        iterator(VarUseAnalysis& host) : mainIter(host.localDeclaredVar.end()),
-            mainEnd(host.localDeclaredVar.end()),
-            host(host)
+        iterator(VarUseAnalysis &host) : mainIter(host.localDeclaredVar.end()),
+                                         mainEnd(host.localDeclaredVar.end()),
+                                         host(host)
         {
         }
+
     private:
-        void moveToValid() {
-            while(mainIter!=mainEnd && host.isShared(*mainIter) != shared) 
+        void moveToValid()
+        {
+            while (mainIter != mainEnd && host.isShared(*mainIter) != shared)
                 mainIter++;
         }
-        void moveToNextValid() {
-            if(mainIter!=mainEnd) {
-                mainIter ++;
+        void moveToNextValid()
+        {
+            if (mainIter != mainEnd)
+            {
+                mainIter++;
                 moveToValid();
             }
         }
     };
 
-    struct shared_range {
-        shared_range(VarUseAnalysis& h) : host(h) {}
-        VarUseAnalysis& host;
+    struct shared_range
+    {
+        shared_range(VarUseAnalysis &h) : host(h) {}
+        VarUseAnalysis &host;
 
-        iterator begin() {
+        iterator begin()
+        {
             return host.beginShared();
         }
-        iterator end() {
+        iterator end()
+        {
             return host.end();
         }
-
     };
 
-    struct nonshared_range {
-        nonshared_range(VarUseAnalysis& h) : host(h) {}
-        VarUseAnalysis& host;
+    struct nonshared_range
+    {
+        nonshared_range(VarUseAnalysis &h) : host(h) {}
+        VarUseAnalysis &host;
 
-        iterator begin() {
+        iterator begin()
+        {
             return host.beginNonShared();
         }
-        iterator end() {
+        iterator end()
+        {
             return host.end();
         }
     };
 
-    iterator beginNonShared() {
+    iterator beginNonShared()
+    {
         return iterator(*this, false);
     }
 
-    iterator end() {
+    iterator end()
+    {
         return iterator(*this);
     }
 
-    iterator beginShared() {
+    iterator beginShared()
+    {
         return iterator(*this, true);
     }
 
-    shared_range shared() {
+    shared_range shared()
+    {
         return shared_range(*this);
     }
 
-    nonshared_range nonshared() {
+    nonshared_range nonshared()
+    {
         return nonshared_range(*this);
     }
 
@@ -578,24 +703,28 @@ public:
             llvm::raw_string_ostream header_stream(header);
 
             { // add hearder
-                header_stream << "#include <ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
+                header_stream << "//#include <ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
             }
-            
+
+            // Var and scope construction
             for (auto var : varUse.localDeclaredVar)
             {
                 scopeTree->addDecl(new VarDeclInFile(var, manager));
 
-                if (varUse.isShared(var))
+                if (!varUse.isShared(var))
                 {
                     std::string varName = PREFIX_LOCAL + var->getNameAsString();
                     helper.staticVarMap[var] = varName;
                 }
             }
 
-            scopeTree->dump(*manager, 0);
-            if(!scopeTree->check(*manager)) {
+            // scopeTree->dump(*manager, 0);
+            if (!scopeTree->check(*manager))
+            {
                 llvm::outs() << "scope tree checks failed\n";
-            } else {
+            }
+            else
+            {
                 llvm::outs() << "scope tree checks passed\n";
             }
 
@@ -605,48 +734,12 @@ public:
                 llvm::Error err = replace->add(rep);
             }
 
-            for (auto stmt : fpStatements)
-            {
-                if (isa<DeclStmt>(stmt))
-                {
-                    DeclStmt *decl = (DeclStmt *)stmt;
-                    std::string originalCode = print(stmt);
-                    std::string code;
-                    llvm::raw_string_ostream stream(code);
-                    auto it = decl->decl_begin();
-                    while (it != decl->decl_end())
-                    {
-                        VarDecl *vd = (VarDecl *)(*it);
-                        {
-                            if(varUse.isLocalInteresting(vd)) {
-                                auto it = helper.staticVarMap.find(vd);
-                                stream << "static SVal " << it->second << "= 0; // initialize once\n";
-                                if (vd->hasInit())
-                                {
-                                    Expr *init = vd->getInit();
-                                    stream << it->second << "=" << print(init, &helper) << ";\n";
-                                }
-                            }
-                            else if(varUse.isSharedInteresting(vd))
-                            { // shared case
-                                std::string varName = vd->getNameAsString();
-                                stream << "SVal &" << PREFIX_SHARED << varName << " = DEF(" << varName << ")"; // map a var to real\n";
-                            }
-                        }
-                        it++;
-                    }
-                    stream.flush();
-                    Replacement App(*manager, stmt, originalCode + ";\n /*\n" + code + "*/");
-                    llvm::Error err = replace->add(App);
-                }
-                else
-                {
-                    std::string originalCode = print(stmt);
-                    std::string code = print(stmt, &helper);
-                    Replacement App(*manager, stmt, originalCode + ";\n //" + code + "\n");
-                    llvm::Error err = replace->add(App);
-                }
-            }
+            doInitRealParameters(helper);
+            // parameter init
+            doTranslateRealStatements(helper);
+
+            // undef
+            doUndefReals(scopeTree, helper);
         }
         if (scopeTree != NULL)
             delete scopeTree;
@@ -688,6 +781,176 @@ public:
             return false;
         }
     };
+
+protected:
+    void doInitRealParameters(RealVarPrinterHelper &helper)
+    {
+        std::map<const FunctionDecl *, std::vector<const ParmVarDecl *>> funMap;
+        for (auto parm : fpParameters)
+        {
+            auto c = (const FunctionDecl *)parm->getParentFunctionOrMethod();
+            funMap[c].push_back(parm);
+        }
+        for (auto pair : funMap)
+        {
+            auto body = pair.first->getBody();
+            auto bodyInfo = scopeTree->stmtMap[body];
+            assert(bodyInfo != NULL);
+            std::string code;
+            llvm::raw_string_ostream stream(code);
+            stream << "{\n";
+
+            stream << "/*\n"; // for debuging
+            for (auto parm : pair.second)
+            {
+                if (varUse.isInteresting(parm))
+                {
+                    int idx = parm->getFunctionScopeIndex();
+                    if (varUse.isShared(parm))
+                    {
+                        std::string varName = parm->getNameAsString();
+                        stream << "SVal &" << PREFIX_SHARED << varName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                        stream << PREFIX_SHARED << varName << "="
+                               << "LOADPARM(" << idx << "," << varName << ");\n";
+                    }
+                    else
+                    {
+                        std::string varName = parm->getNameAsString();
+                        auto fpName = helper.staticVarMap[parm];
+                        stream << "static SVal " << fpName << " = 0;\n"; // map a parameter to real\n";
+                        stream << fpName << "="
+                               << "LOADPARM(" << idx << "," << varName << ");\n";
+                    }
+                }
+            }
+            stream << "*/\n";
+            stream.flush();
+            Replacement App = ReplacementBuilder::create(*manager, bodyInfo->rangeInFile.getBegin(), 1, code);
+            llvm::Error err = replace->add(App);
+        }
+    }
+
+    void doUndefReals(ScopeItem* scopeItem, RealVarPrinterHelper &helper) {
+        if(scopeItem->isScope()) {
+            Scope *scope = (Scope *)scopeItem;
+            if (scopeItem->statement!=NULL && isa<CompoundStmt>(scopeItem->statement))
+            { // we only need to check compound statement
+                if (!scopeTree->isClosedScope(scopeItem))
+                {
+                    // deallocate
+                    std::string preCode;
+                    llvm::raw_string_ostream stream(preCode);
+
+                    stream <<"/* " << scope->varDecls.size() << "\n"; // for debugging
+                    for (auto v : scope->varDecls)
+                    {
+                        if (varUse.isSharedInteresting(v->decl))
+                        {
+                            stream << "UNDEF(" << v->decl->getNameAsString() <<");\n";
+                        }
+                    }
+                    stream <<"*/\n"; // for debugging
+                    stream <<"}\n"; // for debugging
+                    stream.flush();
+
+                    Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getEnd(), 1, preCode);
+                    llvm::Error err = replace->add(Rep);
+                }
+                // for debugging
+                // else {
+                //     Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getEnd(), 1, "/* closed */ }");
+                //     llvm::Error err = replace->add(Rep);
+                // }
+            }
+            for(auto sub : scope->subItems) {
+                doUndefReals(sub, helper);
+            }
+        } else {
+            ScopeBreak *sbreak =  (ScopeBreak*)scopeItem;
+            std::vector<VarDeclInFile*> vars;
+            sbreak->parent->collectVariablesFrom(sbreak, vars);
+            std::string preCode;
+            llvm::raw_string_ostream stream(preCode);
+            stream <<"/* " << vars.size() <<"\n"; // for debugging
+            for(auto v : vars) {
+                if(varUse.isSharedInteresting(v->decl)) {
+                    stream << "UNDEF(" << v->decl->getNameAsString() <<");\n";
+                }
+            }
+            stream <<"*/\n"; // for debugging
+            stream.flush();
+
+            Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getBegin(), 0, preCode);
+            llvm::Error err = replace->add(Rep);
+        }
+    }
+
+    void doInitLocalVariables(const DeclStmt *decl, RealVarPrinterHelper &helper)
+    {
+        std::string originalCode = print(decl);
+        std::string code;
+        llvm::raw_string_ostream stream(code);
+        auto it = decl->decl_begin();
+        while (it != decl->decl_end())
+        {
+            VarDecl *vd = (VarDecl *)(*it);
+            {
+                if (varUse.isLocalInteresting(vd))
+                {
+                    auto it = helper.staticVarMap[vd];
+                    stream << "static SVal " << it << "= 0; // initialize once\n";
+                    if (vd->hasInit())
+                    {
+                        Expr *init = vd->getInit();
+                        stream << it << "=" << print(init, &helper) << ";\n";
+                    }
+                }
+                else if (varUse.isSharedInteresting(vd))
+                { // shared case
+                    std::string varName = vd->getNameAsString();
+                    stream << "SVal &" << PREFIX_SHARED << varName << " = DEF(" << varName << ");\n"; // map a var to real\n";
+                    if (vd->hasInit())
+                    {
+                        Expr *init = vd->getInit();
+                        stream << PREFIX_SHARED << varName << "=" << print(init, &helper) << ";\n";
+                    }
+                }
+            }
+            it++;
+        }
+        stream.flush();
+        Replacement App = ReplacementBuilder::create(*manager, decl, originalCode + ";\n /*\n" + code + "*/");
+        llvm::Error err = replace->add(App);
+    }
+
+    void doTranslateRealStatements(RealVarPrinterHelper &helper)
+    {
+        for (auto stmt : fpStatements)
+        {
+            if (isa<DeclStmt>(stmt))
+            { // handle local vars
+                DeclStmt *decl = (DeclStmt *)stmt;
+                doInitLocalVariables(decl, helper);
+            }
+            // else if(isa<CallExpr>(stmt))
+            // {
+            //     // has to be extended to assignment case
+            //     // in this case, return value is not used or does not exist
+
+            //     // depending on whether callee is instrumented
+            //     // if so, prepare parameters, make a call, and pop fp result
+            //     // if not, check if there is an abstraction
+            //     // otherwise, call original function if it is marked as a pure function, or reuse the original result
+            // }
+            else
+            { // handle fp statements
+                std::string originalCode = print(stmt);
+                std::string code = print(stmt, &helper);
+                Replacement App = ReplacementBuilder::create(*manager, stmt, originalCode + ";\n //" + code + "\n");
+                llvm::Error err = replace->add(App);
+            }
+        }
+    }
 };
 
 int main(int argc, const char **argv)
@@ -708,6 +971,7 @@ int main(int argc, const char **argv)
     tool.add(outStmt, handler);
 
     tool.add(stmtToBeConverted, handler);
+    tool.add(fpParm, handler);
     // tool.add<decltype(target), SingleStmtPatHandler>(target);
 
     tool.run();

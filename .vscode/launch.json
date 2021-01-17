@@ -9,13 +9,15 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/main",
-            "args": [],
+            "args": [
+                "${workspaceFolder}/test/test.cpp"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
-            "preLaunchTask": "C/C++: clang++ build main file"
+            "preLaunchTask": "C/C++: clang++ build active file"
         }
     ]
 }
