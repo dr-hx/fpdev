@@ -32,13 +32,23 @@ class IfStmtHandler : public MatchFinder::MatchCallback {
 public:
   IfStmtHandler(std::map<std::string, Replacements> &r) : ReplaceMap(r) {}
 
+  virtual void onStartOfTranslationUnit() {
+    printf("hello\n");
+  }
+
   virtual void run(const MatchFinder::MatchResult &Result) {
     // The matched 'if' statement was bound to 'ifStmt'.
     const Stmt *stmt;
     stmt = Result.Nodes.getNodeAs<Stmt>("ifStmt1");
     if(stmt!=NULL) {
-      llvm::outs()<<"ifStmt\t1: \n";
-      stmt->dumpColor();
+      auto fn = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
+      stmt->getSourceRange().dump(*Result.SourceManager);
+      llvm::outs() << stmt->getBeginLoc().isFileID() << "\n" << stmt->getBeginLoc().isValid() << "\n";
+      // auto Rep = Replacement(*Result.SourceManager, stmt->getBeginLoc(), 0, "hello");
+      // auto err = ReplaceMap[fn].add(Rep);
+      // if(err.success()) {
+      //   llvm::outs() << "error happened\n";
+      // }
     }
 
     stmt = Result.Nodes.getNodeAs<Stmt>("switchStmt2");
@@ -56,6 +66,11 @@ int main(int argc, const char **argv) {
   CommonOptionsParser op(argc, argv, ToolingSampleCategory);
   RefactoringTool Tool(op.getCompilations(), op.getSourcePathList());
 
+  for(auto fn : op.getSourcePathList()) {
+    auto f = Tool.getFiles().getFile(fn);
+    printf("%s\n", f.get()->tryGetRealPathName().str().c_str());
+  }
+
   // Set up AST matcher callbacks.
   IfStmtHandler HandlerForIf(Tool.getReplacements());
 
@@ -68,30 +83,30 @@ int main(int argc, const char **argv) {
   // However, for demonstration purposes it's interesting to print out the
   // would-be contents of the rewritten files instead of actually rewriting
   // them.
-  if (int Result = Tool.run(newFrontendActionFactory(&Finder).get())) {
+  if (int Result = Tool.runAndSave(newFrontendActionFactory(&Finder).get())) {
     return Result;
   }
 
-  // We need a SourceManager to set up the Rewriter.
-  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-  DiagnosticsEngine Diagnostics(
-      IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
-      new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts), true);
-  SourceManager Sources(Diagnostics, Tool.getFiles());
+  // // We need a SourceManager to set up the Rewriter.
+  // IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+  // DiagnosticsEngine Diagnostics(
+  //     IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
+  //     new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts), true);
+  // SourceManager Sources(Diagnostics, Tool.getFiles());
 
-  // Apply all replacements to a rewriter.
-  Rewriter Rewrite(Sources, LangOptions());
-  Tool.applyAllReplacements(Rewrite);
+  // // Apply all replacements to a rewriter.
+  // Rewriter Rewrite(Sources, LangOptions());
+  // Tool.applyAllReplacements(Rewrite);
 
-  // Query the rewriter for all the files it has rewritten, dumping their new
-  // contents to stdout.
-  for (Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
-                                 E = Rewrite.buffer_end();
-       I != E; ++I) {
-    const FileEntry *Entry = Sources.getFileEntryForID(I->first);
-    llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
-    I->second.write(llvm::outs());
-  }
+  // // Query the rewriter for all the files it has rewritten, dumping their new
+  // // contents to stdout.
+  // for (Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
+  //                                E = Rewrite.buffer_end();
+  //      I != E; ++I) {
+  //   const FileEntry *Entry = Sources.getFileEntryForID(I->first);
+  //   llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
+  //   I->second.write(llvm::outs());
+  // }
 
   return 0;
 }

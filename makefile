@@ -11,67 +11,92 @@ fn=test.cpp
 
 
 CC = /usr/bin/clang++
-CLANG_LIBS = -lLLVM -lLLVMCodeGen -llldYAML -lclang -lclangAST -lclangASTMatchers -lclangAnalysis -lclangApplyReplacements -lclangBasic -lclangChangeNamespace -lclangCodeGen -lclangCrossTU -lclangDependencyScanning -lclangDirectoryWatcher -lclangDoc -lclangDriver -lclangDynamicASTMatchers -lclangEdit -lclangFormat -lclangFrontend -lclangFrontendTool -lclangHandleCXX -lclangHandleLLVM -lclangIndex -lclangLex -lclangMove -lclangParse -lclangQuery -lclangReorderFields -lclangRewrite -lclangRewriteFrontend -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend -lclangTooling -lclangToolingASTDiff -lclangToolingCore -lclangToolingInclusions -lclangToolingRefactoring -lclangToolingSyntax -lclangTransformer
 INCL_PATHS = -I/usr/local/opt/llvm/include -I${SRC_DIR}
 LIB_PATHS = -L/usr/local/opt/llvm/lib
 
-COMPILER_FLAGS = -std=c++17
-LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
+# COMPILER_FLAGS = -std=c++17
+# LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
 
-# SYS_ROOT = -internal-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1 -internal-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include -internal-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/12.0.0/include -internal-externc-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -internal-externc-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include
+CXXFLAGS := -std=c++17 -fno-rtti -O0 -g
+LLVM_BIN_PATH := /usr/local/opt/llvm/bin
+LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
+LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
-# TOOL_ARGS = -- ${COMPILER_FLAGS}  -m64 -isysroot "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ${SYS_ROOT} -mmacosx-version-min=11.0.0  -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -stdlib=libc++
+CLANG_LIBS := \
+	-lclangAST \
+	-lclangASTMatchers \
+	-lclangAnalysis \
+	-lclangBasic \
+	-lclangDriver \
+	-lclangEdit \
+	-lclangFrontend \
+	-lclangFrontendTool \
+	-lclangLex \
+	-lclangParse \
+	-lclangSema \
+	-lclangEdit \
+	-lclangRewrite \
+	-lclangRewriteFrontend \
+	-lclangStaticAnalyzerFrontend \
+	-lclangStaticAnalyzerCheckers \
+	-lclangStaticAnalyzerCore \
+	-lclangCrossTU \
+	-lclangIndex \
+	-lclangSerialization \
+	-lclangToolingCore \
+	-lclangTooling \
+	-lclangFormat \
+	-lclangToolingRefactoring\
+	-lclangApplyReplacements\
+	-lclangTransformer\
+	-lclangToolingInclusions\
+	-lgmp\
+	-lmpfr\
 
-# EXTRA_ARG = -- --target=x86_64-apple-macosx11.0.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -I/usr/local/include -stdlib=libc++ -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
-
-# EXT = --extra-arg-before="--target=x86_64-apple-macosx11.0.0 -nostdinc -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include"
 
 info:
 	@echo ${MAKE_DIR}
 
-passZero: normalization/passZero.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passZero.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passZero
-
-passOne: normalization/passOne.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passOne.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passOne
-
-passTwo: normalization/passTwo.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passTwo.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passTwo
-
-passThree: normalization/passThree.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passThree.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passThree
-
-passClean: normalization/passClean.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g normalization/passClean.cpp ${LIB_PATHS} ${LIBS} -o ../bin/passClean
+clean: 
+	rm -rf bin; mkdir bin
 
 
-normalization : passZero passOne passTwo passThree
+pass = passZero passOne passTwo passThree passClean
+trans = turnFpArith
 
-turnFpArith: instrumentation/turnFpArith.cpp
-	cd src && ${CC} ${COMPILER_FLAGS} ${INCL_PATHS} -g instrumentation/turnFpArith.cpp ${LIB_PATHS} ${LIBS} -o ../bin/turnFpArith
+passObjects = $(foreach n, $(pass), bin/$(n))
+$(passObjects) : bin/% : src/normalization/%.cpp src/transformer/transformer.hpp
+	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-instrumentation : turnFpArith
+transObjects = $(foreach n, $(trans), bin/$(n))
+$(transObjects) : bin/% : src/instrumentation/%.cpp src/transformer/transformer.hpp
+	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 
+normalization : $(passObjects)
+instrumentation : normalization $(transObjects)
 
-testnorm: passZero passOne passTwo passThree
+
+testnorm : normalization
 	rm -r ${TEST_DERIVED_BASE}; mkdir ${TEST_DERIVED_BASE}; cp ${TEST_BASE}/${fn} ${TEST_DERIVED_BASE}/${fn}
-	./bin/passZero ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passOne ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passTwo ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passThree ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
+	for n in $(passObjects); \
+	do \
+		$$n ${TEST_DERIVED_BASE}/${fn};\
+	done
 
-testins: instrumentation testnorm
-	./bin/turnFpArith ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
 
-testnormonly:
-	rm -r ${TEST_DERIVED_BASE}; mkdir ${TEST_DERIVED_BASE}; cp ${TEST_BASE}/${fn} ${TEST_DERIVED_BASE}/${fn}
-	./bin/passZero ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passOne ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passTwo ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passThree ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passClean ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
+testins : instrumentation testnorm
+	for name in $(transObjects); \
+	do \
+		$$name ${TEST_DERIVED_BASE}/${fn};\
+	done
+	./bin/passClean ${TEST_DERIVED_BASE}/${fn};
 
-testinsonly: testnormonly
-	./bin/turnFpArith ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
-	./bin/passClean ${TEST_DERIVED_BASE}/${fn} ${TOOL_ARGS}
+.PHONY : normalization
+.PHONY : instrumentation
+.PHONY : testnorm
+.PHONY : testins
+
+
+sample: src/main.cpp
+	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS) $^ $(CLANG_LIBS) $(LLVM_LDFLAGS) -o bin/main -v

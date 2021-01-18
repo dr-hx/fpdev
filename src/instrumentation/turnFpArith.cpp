@@ -887,7 +887,7 @@ protected:
                             // generally, we should generate a static var for this case. Or we can analyze var use in 
                             auto retName = randomIdentifier("retTmp");
                             stream << "static SVal " << retName <<" = 0; // initialize once\n";
-                            stream << retName << " = " << PREFIX_SHARED << var->getNameAsString() <<";\n";
+                            stream << retName << " = std::move(" << PREFIX_SHARED << var->getNameAsString() <<");// use std::move here\n";
                         }
                     }
                 }

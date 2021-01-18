@@ -17,6 +17,14 @@
 #include <clang/Tooling/Refactoring.h>
 #include <clang/Tooling/Tooling.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/CommandLine.h>
+#include <clang/Driver/Options.h>
+
+// #include "clang/StaticAnalyzer/Frontend/FrontendActions.h"
+
+// #include "llvm/ADT/STLExtras.h"
+#include <llvm/Option/OptTable.h>
+#include <llvm/Support/TargetSelect.h>
 
 using namespace clang;
 using namespace clang::ast_matchers;
