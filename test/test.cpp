@@ -32,6 +32,9 @@ int main(int argc, char const *argv[])
     
     double t;
     double &q = t;
+    q=0;
+    double *e = &q;
+    *e = 0;
     for (double u = (0.0, t = 1);;)
         ;
     for (t = 0.0, *p = 1;;)
@@ -92,7 +95,8 @@ double testPassTwo(int x)
 {
     double a = x;
     double &b = a;
-    testPassTwo(x);
+    double *d = &a;
+    testPassTwo(*d);
     testPassTwo(x)+1;
     x = testPassTwo(x);
     x = true ? testPassTwo(1) + 1 : testPassTwo(2);

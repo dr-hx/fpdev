@@ -191,6 +191,7 @@ class MatchHandler : public MatchFinder::MatchCallback
 {
 protected:
     std::map<std::string, Replacements> &ReplaceMap;
+    const std::set<std::string> *targets;
 protected:
     NonOverlappedStmts nonOverlappedStmts;
     void addAsNonOverlappedStmt(const Stmt *stmt, const SourceRange& range)
@@ -207,6 +208,9 @@ protected:
     }
 public:
     MatchHandler(std::map<std::string, Replacements> &r) : ReplaceMap(r) {}
+    void setTargets(const std::set<std::string> *t) {
+        targets = t;
+    }
 
     static std::string print(const Stmt *stmt, PrinterHelper *helper = NULL)
     {
@@ -331,12 +335,21 @@ protected:
     std::vector<MatchHandler *> handlerVector;
     std::string toolName;
 
+    std::set<std::string> targets;
+
 public:
     CodeTransformationTool(int argc, const char **argv, llvm::cl::OptionCategory category, std::string name = "Unnamed Tool") : Tool(Options.getCompilations(), Options.getSourcePathList()),
                                                                                                                                 Options(argc, argv, category),
                                                                                                                                 Finder(),
                                                                                                                                 toolName(name)
     {
+        for(auto fn : Options.getSourcePathList()) {
+            auto f = Tool.getFiles().getFileRef(fn);
+            if(f) {
+                auto rfn = f->getFileEntry().tryGetRealPathName();
+                targets.insert(rfn.str());
+            }
+        }
     }
 
     ~CodeTransformationTool()
@@ -366,41 +379,42 @@ public:
     {
         // TK_IgnoreImplicitCastsAndParentheses
         Finder.addMatcher(traverse(TK_IgnoreUnlessSpelledInSource, matcher), &handler);
+        handler.setTargets(&targets);
     }
 
     int run()
     {
-        if (int Result = Tool.run(newFrontendActionFactory(&Finder).get()))
+        if (int Result = Tool.runAndSave(newFrontendActionFactory(&Finder).get()))
         {
             return Result;
         }
 
-        // We need a SourceManager to set up the Rewriter.
-        IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-        DiagnosticsEngine Diagnostics(
-            IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
-            new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts), true);
+        // // We need a SourceManager to set up the Rewriter.
+        // IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+        // DiagnosticsEngine Diagnostics(
+        //     IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
+        //     new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts), true);
 
-        SourceManager Sources(Diagnostics, Tool.getFiles());
+        // SourceManager Sources(Diagnostics, Tool.getFiles());
 
-        // Apply all replacements to a rewriter.
-        Rewriter Rewrite(Sources, LangOptions());
-        Tool.applyAllReplacements(Rewrite);
+        // // Apply all replacements to a rewriter.
+        // Rewriter Rewrite(Sources, LangOptions());
+        // Tool.applyAllReplacements(Rewrite);
 
-        // Query the rewriter for all the files it has rewritten, dumping their new
-        // contents to stdout.
-        for (Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
-                                       E = Rewrite.buffer_end();
-             I != E; ++I)
-        {
-            const FileEntry *Entry = Sources.getFileEntryForID(I->first);
-            std::error_code err;
-            llvm::raw_fd_ostream out(Entry->getName(), err);
-            out << "// Rewrite by " << toolName << "\n";
-            I->second.write(out);
-            out.flush();
-            out.close();
-        }
+        // // Query the rewriter for all the files it has rewritten, dumping their new
+        // // contents to stdout.
+        // for (Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
+        //                                E = Rewrite.buffer_end();
+        //      I != E; ++I)
+        // {
+        //     const FileEntry *Entry = Sources.getFileEntryForID(I->first);
+        //     std::error_code err;
+        //     llvm::raw_fd_ostream out(Entry->getName(), err);
+        //     out << "// Rewrite by " << toolName << "\n";
+        //     I->second.write(out);
+        //     out.flush();
+        //     out.close();
+        // }
         return 0;
     }
 };

@@ -24,6 +24,7 @@ auto fpType = realFloatingPointType(); // may be extended
 auto fpVarDecl = varDecl(hasType(fpType), anyOf(hasLocalStorage(), isStaticLocal()));
 auto fpVarDeclInFunc = functionDecl(forEachDescendant(fpVarDecl.bind("varDecl")));
 
+// how to handle struct/union
 auto sharedAddressVar = unaryOperator(hasOperatorName("&"), hasUnaryOperand(declRefExpr(to(fpVarDecl.bind("refVar")))));
 auto referencedVar = varDecl(hasType(lValueReferenceType(pointee(fpType))), hasInitializer(declRefExpr(to(fpVarDecl.bind("refVar")))));
 
@@ -32,8 +33,8 @@ auto referencedParmVar = callExpr(forEachArgumentWithParam(declRefExpr(to(fpVarD
 
 auto retFpVarStmt = returnStmt(hasReturnValue(declRefExpr(hasType(fpType))));
 
-auto fpAssign = binaryOperator(isAssignmentOperator(), hasType(fpType));
-auto fpInc = unaryOperator(hasAnyOperatorName("++", "--"), hasUnaryOperand(hasType(fpType)));
+auto fpAssign = binaryOperator(isAssignmentOperator(), hasType(fpType), hasLHS(expr().bind("lFpVal")));
+auto fpInc = unaryOperator(hasAnyOperatorName("++", "--"), hasUnaryOperand(expr(hasType(fpType)).bind("lFpVal")));
 auto fpChange = expr(anyOf(fpInc, fpAssign));
 auto fpFunc = functionDecl(anyOf(returns(fpType), hasAnyParameter(hasType(fpType))));
 auto callFpFunc = callExpr(callee(fpFunc));
@@ -41,7 +42,7 @@ auto fpDeclStmt = declStmt(has(varDecl(hasType(fpType))));
 
 // FIXME: handle long pointer and integer point
 // handle default branch in switch
-auto stmtToBeConverted = compoundStmt(forEach(stmt(anyOf(retFpVarStmt, fpChange, callFpFunc, fpDeclStmt)).bind("stmt")));
+auto stmtToBeConverted = compoundStmt(forEach(stmt(anyOf(fpChange, callFpFunc, fpDeclStmt)).bind("stmt")));
 
 auto fpParm = parmVarDecl(hasType(fpType)).bind("parm");
 // local fp var = fpVarDeclInFunc - sharedAddressVar - referencedVar - referencedParmVar
@@ -54,7 +55,7 @@ auto fpParm = parmVarDecl(hasType(fpType)).bind("parm");
 
 auto funcDecl = functionDecl().bind("func-scope");
 auto scope = stmt(anyOf(compoundStmt(), ifStmt(), forStmt(), whileStmt(), doStmt(), switchStmt())).bind("stmt-scope");
-auto outStmt = stmt(anyOf(breakStmt(), returnStmt())).bind("out-scope");
+auto outStmt = stmt(anyOf(breakStmt(), returnStmt(optionally(hasReturnValue(stmt().bind("retVal")))))).bind("out-scope");
 
 // root: parent = NULL, statement = NULL
 // function decl: parent != NULL, statement = NULL
@@ -103,14 +104,6 @@ struct ScopeItem : public StmtInFile
         return rangeInFile.fullyContains(r.rangeInFile);
     }
 
-    // bool after(const StmtInFile& r) {
-    //     return this->rangeInFile.getBegin() > r.rangeInFile.getBegin();
-    // }
-
-    // bool after(const VarDeclInFile& r) {
-    //     return this->rangeInFile.getBegin() > r.rangeInFile.getBegin();
-    // }
-
     bool isFuncDecl()
     {
         return parent != NULL && statement == NULL;
@@ -147,7 +140,8 @@ struct ScopeItem : public StmtInFile
 struct ScopeBreak : public ScopeItem
 {
     bool isSemiBreak;
-    ScopeBreak(const Stmt *s, const SourceManager *m) : ScopeItem(s, m)
+    const Expr* returnValue;
+    ScopeBreak(const Stmt *s, const SourceManager *m, const Expr* r) : ScopeItem(s, m), returnValue(r)
     {
         if (isa<BreakStmt>(s))
             isSemiBreak = true;
@@ -593,6 +587,7 @@ protected:
     std::string filename;
     std::vector<const Stmt *> fpStatements;
     std::vector<const ParmVarDecl *> fpParameters;
+    std::set<const Expr*> lFpVals;
 
 public:
     FpArithInstrumentation(std::map<std::string, Replacements> &r) : MatchHandler(r)
@@ -620,6 +615,8 @@ public:
                 if (stmt != NULL)
                 {
                     fpStatements.push_back(stmt);
+                    const Expr* lfp = Result.Nodes.getNodeAs<Expr>("lFpVal");
+                    if(lfp!=NULL) lFpVals.insert(lfp);
                 }
                 else
                 {
@@ -652,7 +649,8 @@ public:
                             // llvm::outs() << outScope->getStmtClassName() <<"\n";
                             // outScope->getSourceRange().print(llvm::outs(), *Result.SourceManager);
                             // llvm::outs() << "\n";
-                            scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager));
+                            const Expr* ret = Result.Nodes.getNodeAs<Expr>("retVal");
+                            scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager,ret));
                         }
                     }
                 }
@@ -693,7 +691,7 @@ public:
 
     virtual void onEndOfTranslationUnit()
     {
-        RealVarPrinterHelper helper;
+        RealVarPrinterHelper helper(varUse);
         // std::set<const VarDecl*> staticReal;
 
         if (manager != NULL)
@@ -737,7 +735,6 @@ public:
             doInitRealParameters(helper);
             // parameter init
             doTranslateRealStatements(helper);
-
             // undef
             doUndefReals(scopeTree, helper);
         }
@@ -748,25 +745,25 @@ public:
     struct RealVarPrinterHelper : public PrinterHelper
     {
         std::map<const VarDecl *, std::string> staticVarMap;
+        VarUseAnalysis& varUse;
+
+        RealVarPrinterHelper(VarUseAnalysis& v) : varUse(v) {}
 
         virtual bool handledStmt(Stmt *E, raw_ostream &OS)
         {
             if (isa<DeclRefExpr>(E))
             {
                 DeclRefExpr *expr = (DeclRefExpr *)E;
-                if (isa<VarDecl>(expr->getDecl()))
+                if (isa<VarDecl>(expr->getDecl()))//fixme
                 {
                     VarDecl *varDecl = (VarDecl *)expr->getDecl();
-                    auto it = staticVarMap.find(varDecl);
-                    if (it != staticVarMap.end())
-                    {
-                        OS << it->second;
+                    if(varUse.isLocalInteresting(varDecl)) {
+                        OS << staticVarMap[varDecl];
+                        return true;
+                    } else if(varUse.isSharedInteresting(varDecl)) {
+                        OS << PREFIX_SHARED << varDecl->getNameAsString();
+                        return true;
                     }
-                    else
-                    {
-                        OS << PREFIX_LOCAL << varDecl->getNameAsString();
-                    }
-                    return true;
                 }
             }
             else if (isa<UnaryOperator>(E))
@@ -875,23 +872,28 @@ protected:
 
             if(sbreak->isSemiBreak==false) {
                 auto retStmt = (ReturnStmt*) sbreak->statement;
-                auto retVal = retStmt->getRetValue();
-                if(isa<DeclRefExpr>(retVal)) {
+                auto retVal = sbreak->returnValue;
+                if(retVal!=NULL && isa<DeclRefExpr>(retVal)) {
                     auto ref = (DeclRefExpr*)retVal;
                     auto valDecl = ref->getDecl();
                     if(isa<VarDecl>(valDecl)) {
                         VarDecl* var = (VarDecl*) valDecl;
                         if(varUse.isLocalInteresting(var)) {
+                            // note that if it returns a structure/class, we must generate multiple PUSHRET statements
                             // it is safe to push this real on the stack
+                            std::string retName = var->getNameAsString();
+                            stream << "PUSHRET(0,"<< retName <<");\n";// use std::move here\n";
                         } else if(varUse.isSharedInteresting(var)) {
                             // generally, we should generate a static var for this case. Or we can analyze var use in 
                             auto retName = randomIdentifier("retTmp");
                             stream << "static SVal " << retName <<" = 0; // initialize once\n";
                             stream << retName << " = std::move(" << PREFIX_SHARED << var->getNameAsString() <<");// use std::move here\n";
+                            stream << "PUSHRET(0,"<< retName <<");\n";// use std::move here\n";
                         }
                     }
                 }
-
+            } else {
+                llvm::outs() << sbreak->statement->getStmtClassName() << "\n";
             }
 
             for(auto v : vars) {
@@ -954,15 +956,9 @@ protected:
                 DeclStmt *decl = (DeclStmt *)stmt;
                 doInitLocalVariables(decl, helper);
             }
-            // else if(isa<CallExpr>(stmt))
+            // else if(isa<>(stmt))
             // {
-            //     // has to be extended to assignment case
-            //     // in this case, return value is not used or does not exist
 
-            //     // depending on whether callee is instrumented
-            //     // if so, prepare parameters, make a call, and pop fp result
-            //     // if not, check if there is an abstraction
-            //     // otherwise, call original function if it is marked as a pure function, or reuse the original result
             // }
             else
             { // handle fp statements
