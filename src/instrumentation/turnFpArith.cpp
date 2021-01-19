@@ -40,7 +40,8 @@ auto fpRefType = qualType(anyOf(lValueReferenceType(pointee(fpType)), pointerTyp
 auto referencedParmVar = callExpr(forEachArgumentWithParam(declRefExpr(to(fpVarDecl.bind("refVar"))), parmVarDecl(hasType(fpRefType))));
 
 // from varDecl, we cannot navigate back to its declStmt. so we need the following patterns to get the def sites
-auto fpParmDef = functionDecl(forEach(parmVarDecl(hasType(fpType)).bind("def")), hasBody(compoundStmt().bind("def-site")));
+// auto fpParmDef = functionDecl(forEach(parmVarDecl(hasType(fpType)).bind("def")), hasBody(compoundStmt().bind("def-site")));
+auto fpParmDef = parmVarDecl(hasType(fpType), hasAncestor(functionDecl(hasBody(compoundStmt().bind("def-site"))))).bind("def");
 auto fpVarDef = declStmt(forEach(varDecl(hasType(fpType), optionally(hasInitializer(callFpFunc.bind("rhs")))).bind("def"))).bind("def-site");
 
 // non local var collection
@@ -49,9 +50,18 @@ auto fpRefUse = declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpTyp
 auto fpArrElem = arraySubscriptExpr(hasType(fpType)).bind("lFpVal");
 auto fpField = memberExpr(hasType(fpType)).bind("lFpVal");
 
+auto fpArg = expr(anyOf(
+    declRefExpr(to(fpVarDecl)),
+    declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpType)))))),
+    unaryOperator(hasOperatorName("*"), hasType(fpType)),
+    arraySubscriptExpr(hasType(fpType)),
+    memberExpr(hasType(fpType))));
+
+auto fpCallArg = callExpr(callee(fpFunc.bind("callee")), forEachArgumentWithParam(fpArg.bind("arg"), parmVarDecl(hasType(fpType)).bind("parm"))).bind("call");
+
 // four types:  assignment of arith expr, assignment of fpcall, fpcall, fpinc
 auto stmtToBeConverted = compoundStmt(forEach(stmt(anyOf(fpInc, fpAssignFpCall, fpAssignFpExpr, callFpFunc)).bind("stmt")));
-auto fpVarDefWithCallInitializer = declStmt(forEach(varDecl(hasType(fpType), hasInitializer(callFpFunc.bind("init"))).bind("var"))).bind("declStmt");
+// auto fpVarDefWithCallInitializer = declStmt(forEach(varDecl(hasType(fpType), hasInitializer(callFpFunc.bind("init"))).bind("var"))).bind("declStmt");
 
 // local fp var = fpVarDeclInFunc - sharedAddressVar - referencedVar - referencedParmVar
 
@@ -73,8 +83,8 @@ struct VarDef
 {
     const Stmt *defSite;
     const VarDecl *varDef;
-    const Expr *initializer;
-    VarDef(const VarDecl *def, const Stmt *site, const Expr *init = NULL) : varDef(def), defSite(site), initializer(init) {}
+    const CallExpr *initializer;
+    VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), initializer(init) {}
     bool isParm()
     {
         return isa<ParmVarDecl>(varDef);
@@ -94,7 +104,7 @@ struct VarDefRecord
             delete vd;
         defs.clear();
     }
-    void insert(const VarDecl *def, const Stmt *site, const Expr *init = NULL)
+    void insert(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL)
     {
         VarDef *vd = new VarDef(def, site, init);
         defs.push_back(vd);
@@ -108,6 +118,62 @@ struct VarDefRecord
             result[def->defSite].push_back(def);
         }
         return result;
+    }
+};
+
+int getParmID(const ParmVarDecl* parm)
+{
+    llvm::outs() << parm->getNameAsString() << "\n";
+    const FunctionDecl* func = (FunctionDecl*) parm->getDeclContext();
+    assert(func!=NULL);
+    int size = func->getNumParams();
+    for(int i=0;i<size;i++)
+    {
+        if(func->getParamDecl(i)==parm) return i;
+    }
+    return -1;
+}
+
+struct CallSite
+{
+    struct CallArg
+    {
+        const Expr *arg;
+        const ParmVarDecl *parm;
+        CallArg(const Expr *a, const ParmVarDecl *p) : arg(a), parm(p) {}
+    };
+    const CallExpr *call;
+    const FunctionDecl *callee;
+    std::vector<CallArg> args;
+    CallSite(const CallExpr *c, const FunctionDecl *l) : call(c), callee(l) {}
+};
+
+struct CallSites
+{
+    std::map<const CallExpr *, CallSite> sites;
+
+    bool has(const CallExpr *c)
+    {
+        return sites.find(c) != sites.end();
+    }
+
+    CallSite &operator[](const CallExpr *e)
+    {
+        auto it = sites.find(e);
+        assert(it!=sites.end());
+        return it->second;
+    }
+    void insert(const CallExpr *call, const FunctionDecl *callee, const Expr *arg, const ParmVarDecl *parm)
+    {
+        if (sites.find(call) == sites.end())
+        {
+            sites.insert(std::make_pair(call, CallSite(call, callee)));
+        }
+        sites.find(call)->second.args.push_back(CallSite::CallArg(arg, parm));
+    }
+    void clear()
+    {
+        sites.clear();
     }
 };
 
@@ -645,8 +711,8 @@ public:
         FP_CALL,
         FP_ASSIGNMENT,
         FP_CALL_ASSIGNMENT,
-        FP_INC,
-        FP_DECL_WITH_CALL
+        FP_INC
+        // FP_DECL_WITH_CALL
     };
 
 private:
@@ -662,7 +728,7 @@ public:
     static FpStmt createFpAssignExpr(const Stmt *assign, const Stmt *expr) { return FpStmt(Type::FP_ASSIGNMENT, assign, expr); }
     static FpStmt createFpAssignFpCall(const Stmt *assign, const Stmt *call) { return FpStmt(Type::FP_CALL_ASSIGNMENT, assign, call); }
     static FpStmt createFpInc(const Stmt *inc) { return FpStmt(Type::FP_INC, inc); }
-    static FpStmt createFpVarDecl(const Stmt *decl, const Stmt *call, const VarDecl *var) { return FpStmt(Type::FP_DECL_WITH_CALL, decl, call, var); }
+    // static FpStmt createFpVarDecl(const Stmt *decl, const Stmt *call, const VarDecl *var) { return FpStmt(Type::FP_DECL_WITH_CALL, decl, call, var); }
 };
 class FpArithInstrumentation : public MatchHandler
 {
@@ -671,6 +737,7 @@ protected:
     ScopeTree *scopeTree;           // handle default local var undef
     VarDefRecord varDefs;           // handle local var def
     std::set<const Expr *> lFpVals; // handle left fp values
+    CallSites callSites;
 
     const SourceManager *manager;
     Replacements *replace;
@@ -722,6 +789,18 @@ public:
         }
 
         {
+            auto call = Result.Nodes.getNodeAs<CallExpr>("call");
+            if (call != NULL)
+            {
+                auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
+                auto arg = Result.Nodes.getNodeAs<Expr>("arg");
+                auto parm = Result.Nodes.getNodeAs<ParmVarDecl>("parm");
+
+                callSites.insert(call, callee, arg, parm);
+            }
+        }
+
+        {
             const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
             if (stmt != NULL)
             {
@@ -749,16 +828,16 @@ public:
             }
         }
 
-        {
-            const Stmt *declStmt = Result.Nodes.getNodeAs<Stmt>("declStmt");
-            if (declStmt != NULL)
-            {
-                const VarDecl *varDecl = Result.Nodes.getNodeAs<VarDecl>("var");
-                const Stmt *rhs = Result.Nodes.getNodeAs<Stmt>("init");
-                fpStatements.push_back(FpStmt::createFpVarDecl(declStmt, rhs, varDecl));
-                return;
-            }
-        }
+        // {
+        //     const Stmt *declStmt = Result.Nodes.getNodeAs<Stmt>("declStmt");
+        //     if (declStmt != NULL)
+        //     {
+        //         const VarDecl *varDecl = Result.Nodes.getNodeAs<VarDecl>("var");
+        //         const Stmt *rhs = Result.Nodes.getNodeAs<Stmt>("init");
+        //         fpStatements.push_back(FpStmt::createFpVarDecl(declStmt, rhs, varDecl));
+        //         return;
+        //     }
+        // }
 
         {
             // scope analysis
@@ -853,7 +932,7 @@ public:
                 llvm::Error err = replace->add(rep);
             }
 
-            // doDefReals(helper);
+            doDefReals(helper);
             // parameter init
             doTranslateRealStatements(helper);
             // undef
@@ -870,6 +949,7 @@ public:
         varDefs.clear();
         lFpVals.clear();
         fpStatements.clear();
+        callSites.clear();
     }
 
     struct RealVarPrinterHelper : public PrinterHelper
@@ -913,6 +993,20 @@ public:
     };
 
 protected:
+    // void generateShadowVarDef(const VarDecl *var, llvm::raw_string_ostream& stream)
+    // {
+    //     std::string varName = var->getNameAsString();
+    //     std::string sVarName = varUse.getSValName(var);
+    //     // decl shadow
+    //     if (varUse.isShared(var))
+    //     {
+    //         stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+    //     }
+    //     else
+    //     {
+    //         stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
+    //     }
+    // }
     void doDefReals(RealVarPrinterHelper &helper)
     {
         auto groups = varDefs.grouping();
@@ -924,59 +1018,63 @@ protected:
             SourceRange siteRangeInFile = SourceRange(manager->getFileLoc(group.first->getBeginLoc()), manager->getFileLoc(group.first->getEndLoc()));
             bool isParmDef = isa<CompoundStmt>(group.first);
 
-            if (isParmDef)
-                stream << "{\n";
-            stream << "/*\n"; // FIXME: conflict with def statement
-
-            for (auto v : group.second)
-            {
-                if (v->initializer != NULL)
-                    continue;
-                if (varUse.isInteresting(v->varDef))
-                {
-                    std::string varName = v->varDef->getNameAsString();
-                    std::string sVarName;
-                    // decl shadow
-                    if (varUse.isShared(v->varDef))
-                    {
-                        sVarName = varUse.getSValName(v->varDef);
-                        stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
-                    }
-                    else
-                    {
-                        sVarName = helper.staticVarMap[v->varDef];
-                        stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
-                    }
-
-                    // init
-                    if (isParmDef)
-                    {
-                        const ParmVarDecl *parm = (const ParmVarDecl *)v;
-                        int idx = parm->getFunctionScopeIndex();
-                        stream << sVarName << "= LOADPARM(" << idx << "," << varName << ");\n";
-                    }
-                    else
-                    {
-                        if (v->varDef->hasInit())
-                        {
-                            const Expr *init = v->varDef->getInit();
-                            stream << sVarName << "=" << print(init, &helper) << ";\n";
-                        }
-                    }
-                }
-            }
-            stream << "*/\n";
-            stream.flush();
-            if (isParmDef)
-            {
-                Replacement App = ReplacementBuilder::create(*manager, siteRangeInFile.getBegin(), 1, code);
-                llvm::Error err = replace->add(App);
+            if (group.second.size() == 1 && group.second[0]->initializer != NULL)
+            { // def with fp call initialer
+                std::string sValName = varUse.getSValName(group.second[0]->varDef);
+                doTranslateCall(group.first, group.second[0]->initializer, sValName, helper);
             }
             else
             {
-                std::string originalCode = print(group.first);
-                Replacement App = ReplacementBuilder::create(*manager, group.first, originalCode + ";\n" + code);
-                llvm::Error err = replace->add(App);
+                if (isParmDef)
+                    stream << "{\n";
+                stream << "/*\n";
+                for (auto v : group.second)
+                {
+                    assert(v->initializer == NULL);
+                    if (varUse.isInteresting(v->varDef))
+                    {
+                        std::string varName = v->varDef->getNameAsString();
+                        std::string sVarName = varUse.getSValName(v->varDef);
+                        // decl shadow
+                        if (varUse.isShared(v->varDef))
+                        {
+                            stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                        }
+                        else
+                        {
+                            stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                        }
+
+                        // init
+                        if (isParmDef)
+                        {
+                            const ParmVarDecl *parm = (const ParmVarDecl *)v->varDef;
+                            int idx = parm->getFunctionScopeIndex();
+                            stream << sVarName << "= LOADPARM(" << idx << "," << varName << ");\n";
+                        }
+                        else
+                        {
+                            if (v->varDef->hasInit())
+                            {
+                                const Expr *init = v->varDef->getInit();
+                                stream << sVarName << "=" << print(init, &helper) << ";\n";
+                            }
+                        }
+                    }
+                }
+                stream << "*/\n";
+                stream.flush();
+                if (isParmDef)
+                {
+                    Replacement App = ReplacementBuilder::create(*manager, siteRangeInFile.getBegin(), 1, code);
+                    llvm::Error err = replace->add(App);
+                }
+                else
+                {
+                    std::string originalCode = print(group.first);
+                    Replacement App = ReplacementBuilder::create(*manager, group.first, originalCode + ";\n" + code);
+                    llvm::Error err = replace->add(App);
+                }
             }
         }
     }
@@ -1080,33 +1178,58 @@ protected:
 
     void doTranslateCall(const Stmt *site, const CallExpr *call, std::string ret, RealVarPrinterHelper &helper)
     {
-        
+
         std::string repCode;
         llvm::raw_string_ostream stream(repCode);
         stream << "//"; // for debugging
         stream << "PUSHCALL();\n";
-        auto argNum = call->getNumArgs();
-        for (int i = 0; i < argNum; i++)
+        if (callSites.has(call))
         {
-            const Expr *arg = call->getArg(i);
-            if (varUse.isLocalInteresting((const VarDecl *)arg) // it is safe to do the invalid cast
-                || lFpVals.count(arg) != 0)
+            for (auto callArg : callSites[call].args)
             {
-                stream << "//"; // for debugging
-                stream << "PUSHARG(" << i << "," << print(arg, &helper) << ");\n";
+                auto arg = callArg.arg;
+                bool isInterestingVar = false;
+                if(isa<DeclRefExpr>(arg))
+                {
+                    isInterestingVar = varUse.isLocalInteresting((const VarDecl*) ((const DeclRefExpr *)arg)->getDecl());
+                }
+                if (isInterestingVar || lFpVals.count(arg) != 0)
+                {
+                    stream << "//"; // for debugging
+                    stream << "PUSHARG(" << callArg.parm->getFunctionScopeIndex() << "," << print(arg, &helper) << ");\n";
+                }
             }
         }
-        stream << print(site) << ";\n";
+        stream << print(site);
+        if (isa<DeclStmt>(site))
+        {
+            auto ds = (const DeclStmt *)site;
+            auto vd = (const VarDecl *)ds->getSingleDecl();
+            std::string varName = vd->getNameAsString();
+            std::string sVarName = varUse.getSValName(vd);
+            // decl shadow
+            stream << "//";
+            if (varUse.isShared(vd))
+            {
+                stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+            }
+            else
+            {
+                stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
+            }
+        }
+        else
+            stream << ";";
+
         stream << "//"; // for debugging
         if (ret.size() == 0)
             stream << "POPCALL()";
         else
             stream << "POPCALL(0, " << ret << ")";
         stream.flush();
-        llvm::outs() << repCode <<"\n";
         Replacement App = ReplacementBuilder::create(*manager, site, repCode);
         llvm::Error err = replace->add(App);
-        if(err)
+        if (err)
         {
             llvm::outs() << "error\n";
         }
@@ -1147,13 +1270,13 @@ protected:
                 doTranslateCall(stmt.fpStmt, call, ((const BinaryOperator *)stmt.fpStmt)->getLHS(), helper);
             }
             break;
-            case FpStmt::Type::FP_DECL_WITH_CALL:
-            {
-                const CallExpr *call = (const CallExpr *)stmt.rhs;
-                std::string sRet = varUse.getSValName(stmt.var);
-                doTranslateCall(stmt.fpStmt, call, sRet, helper);
-            }
-            break;
+                // case FpStmt::Type::FP_DECL_WITH_CALL:
+                // {
+                //     const CallExpr *call = (const CallExpr *)stmt.rhs;
+                //     std::string sRet = varUse.getSValName(stmt.var);
+                //     doTranslateCall(stmt.fpStmt, call, sRet, helper);
+                // }
+                // break;
             }
         }
     }
@@ -1186,8 +1309,11 @@ int main(int argc, const char **argv)
     tool.add(fpRefUse, handler);
     tool.add(fpField, handler);
 
+    // call sites
+    tool.add(fpCallArg, handler);
+
     tool.add(stmtToBeConverted, handler);
-    tool.add(fpVarDefWithCallInitializer, handler);
+    // tool.add(fpVarDefWithCallInitializer, handler);
     // tool.add(fpParm, handler);
     // tool.add<decltype(target), SingleStmtPatHandler>(target);
 

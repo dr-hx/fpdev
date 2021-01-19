@@ -221,7 +221,7 @@
             "label": "Run clang-query",
             "command": "/usr/local/opt/llvm/bin/clang-query",
             "args": [
-                "test/test.cpp"
+                "test/derived/test.cpp"
             ],
             "problemMatcher": []
         }
