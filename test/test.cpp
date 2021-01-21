@@ -5,17 +5,26 @@
 
 #define HELLO d + x
 
+static double s_x;
 int main(int argc, char const *argv[])
 {
+    static double s_y;
     double x;
     double &y = x;
 
+    test<10>(1,2);
 return 0;
 }
 
+template<int Size>
 double test(double x, double y)
 {
-    return test(x+1, y+1) + test(x-1, 0);
+    int s = 5;
+    double a[]={1,2,3,4,5}; // constant
+    double b[5]; // constant
+    double c[s+1]; //variable type
+    double d[Size]; // dependent type
+    return test<Size>(x+1, y+1) + test<Size>(x-1, 0);
 }
 
 // #pragma K

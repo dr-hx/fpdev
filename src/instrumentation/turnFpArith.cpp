@@ -50,6 +50,10 @@ auto fpRefUse = declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpTyp
 auto fpArrElem = arraySubscriptExpr(hasType(fpType)).bind("lFpVal");
 auto fpField = memberExpr(hasType(fpType)).bind("lFpVal");
 
+// constant array type should be handled
+// auto fpArrDef = varDecl(hasType(constantArrayType(hasElementType(fpType))))
+// variable array type and pointer should be handled in the same way
+
 auto fpArg = expr(anyOf(
     declRefExpr(to(fpVarDecl)),
     declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpType)))))),
@@ -83,8 +87,8 @@ struct VarDef
 {
     const Stmt *defSite;
     const VarDecl *varDef;
-    const CallExpr *initializer;
-    VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), initializer(init) {}
+    const CallExpr *callInitializer;
+    VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), callInitializer(init) {}
     bool isParm()
     {
         return isa<ParmVarDecl>(varDef);
@@ -1018,10 +1022,10 @@ protected:
             SourceRange siteRangeInFile = SourceRange(manager->getFileLoc(group.first->getBeginLoc()), manager->getFileLoc(group.first->getEndLoc()));
             bool isParmDef = isa<CompoundStmt>(group.first);
 
-            if (group.second.size() == 1 && group.second[0]->initializer != NULL)
+            if (group.second.size() == 1 && group.second[0]->callInitializer != NULL)
             { // def with fp call initialer
                 std::string sValName = varUse.getSValName(group.second[0]->varDef);
-                doTranslateCall(group.first, group.second[0]->initializer, sValName, helper);
+                doTranslateCall(group.first, group.second[0]->callInitializer, sValName, helper);
             }
             else
             {
@@ -1030,7 +1034,7 @@ protected:
                 stream << "/*\n";
                 for (auto v : group.second)
                 {
-                    assert(v->initializer == NULL);
+                    assert(v->callInitializer == NULL);
                     if (varUse.isInteresting(v->varDef))
                     {
                         std::string varName = v->varDef->getNameAsString();
@@ -1107,11 +1111,6 @@ protected:
                     Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getEnd(), 1, preCode);
                     llvm::Error err = replace->add(Rep);
                 }
-                // for debugging
-                // else {
-                //     Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getEnd(), 1, "/* closed */ }");
-                //     llvm::Error err = replace->add(Rep);
-                // }
             }
             for (auto sub : scope->subItems)
             {

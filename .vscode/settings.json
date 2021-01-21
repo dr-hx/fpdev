@@ -73,6 +73,7 @@
         "typeinfo": "cpp",
         "utility": "cpp",
         "vector": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "*.inc": "cpp"
     }
 }
