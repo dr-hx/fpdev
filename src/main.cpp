@@ -75,6 +75,8 @@ int main(int argc, const char **argv) {
 
   t = r + s;
 
+  int i;
+
   mpfr_printf("%Re\n", t.shadow->shadowValue);
 
   // CommonOptionsParser op(argc, argv, ToolingSampleCategory);

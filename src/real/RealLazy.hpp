@@ -241,14 +241,14 @@ namespace real
             Real(double v)
             {
                 shadow = ShadowPool::INSTANCE.get();
-                mpfr_set_d(shadow->shadowValue, v, MPFR_RNDN);
+                ASSIGN_D(shadow->shadowValue, v);
                 shadow->originalValue = v;
                 shadow->avgRelativeError = 0;
             }
             Real(const Real &r)
             {
                 shadow = ShadowPool::INSTANCE.get();
-                mpfr_set(shadow->shadowValue, r.shadow->shadowValue, MPFR_RNDN);
+                ASSIGN(shadow->shadowValue, r.shadow->shadowValue);
                 shadow->originalValue = r.shadow->originalValue;
                 shadow->avgRelativeError = 0;
             }
@@ -295,7 +295,7 @@ namespace real
 
             inline Real &operator=(const double &r)
             {
-                mpfr_set_d(this->shadow->shadowValue, r, MPFR_RNDN);
+                ASSIGN_D(this->shadow->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 shadow->originalValue = r;
 #endif
@@ -304,7 +304,7 @@ namespace real
 
             inline Real &operator+=(const double &r)
             {
-                mpfr_add_d(this->shadow->shadowValue, this->shadow->shadowValue, r, MPFR_RNDN);
+                ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 shadow->originalValue += r;
 #endif
@@ -312,7 +312,7 @@ namespace real
             }
             inline Real &operator-=(const double &r)
             {
-                mpfr_sub_d(this->shadow->shadowValue, this->shadow->shadowValue, r, MPFR_RNDN);
+                SUB_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 shadow->originalValue -= r;
 #endif
@@ -320,7 +320,7 @@ namespace real
             }
             inline Real &operator*=(const double &r)
             {
-                mpfr_mul_d(this->shadow->shadowValue, this->shadow->shadowValue, r, MPFR_RNDN);
+                MUL_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 shadow->originalValue *= r;
 #endif
@@ -328,7 +328,7 @@ namespace real
             }
             inline Real &operator/=(const double &r)
             {
-                mpfr_div_d(this->shadow->shadowValue, this->shadow->shadowValue, r, MPFR_RNDN);
+                DIV_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 shadow->originalValue /= r;
 #endif
@@ -362,7 +362,7 @@ namespace real
         {
             inline static void eval(const real::sval_ptr acc, const RealBase<Real> &v)
             {
-                mpfr_set(acc->shadowValue, v.derived().shadow->shadowValue, MPFR_RNDN);
+                ASSIGN(acc->shadowValue, v.derived().shadow->shadowValue);
             }
 
             inline static const real::sval_ptr eval(const RealBase<Real> &r)
@@ -393,7 +393,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_add(acc->shadowValue, ll->shadowValue, rr->shadowValue, MPFR_RNDN);
+                ADD_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue + rr->originalValue;
 #endif
@@ -407,7 +407,7 @@ namespace real
                 const RealBase<Real> &l = exp.derived().lhs;
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_add_d(acc->shadowValue, ll->shadowValue, r, MPFR_RNDN);
+                ADD_RD(acc->shadowValue, ll->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue + r;
 #endif
@@ -423,7 +423,7 @@ namespace real
                 if (real_likely(rr != acc))
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
-                    mpfr_add(acc->shadowValue, acc->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    ADD_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue + rr->originalValue;
 #endif
@@ -431,7 +431,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
-                    mpfr_add(acc->shadowValue, tmp->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    ADD_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue + rr->originalValue;
 #endif
@@ -445,7 +445,7 @@ namespace real
             {
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
-                mpfr_add_d(acc->shadowValue, acc->shadowValue, r, MPFR_RNDN);
+                ADD_RD(acc->shadowValue, acc->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue + r;
 #endif
@@ -461,7 +461,7 @@ namespace real
                 if (real_likely(ll != acc))
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                    mpfr_add(acc->shadowValue, ll->shadowValue, acc->shadowValue, MPFR_RNDN);
+                    ADD_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue + acc->originalValue;
 #endif
@@ -469,7 +469,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                    mpfr_add(acc->shadowValue, ll->shadowValue, tmp->shadowValue, MPFR_RNDN);
+                    ADD_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue + tmp->originalValue;
 #endif
@@ -484,7 +484,7 @@ namespace real
             {
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_add(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue, MPFR_RNDN);
+                ADD_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue + tmp2->originalValue;
 #endif
@@ -504,7 +504,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_mul(acc->shadowValue, ll->shadowValue, rr->shadowValue, MPFR_RNDN);
+                MUL_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue * rr->originalValue;
 #endif
@@ -518,7 +518,7 @@ namespace real
                 const RealBase<Real> &l = exp.derived().lhs;
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_mul_d(acc->shadowValue, ll->shadowValue, r, MPFR_RNDN);
+                MUL_RD(acc->shadowValue, ll->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue * r;
 #endif
@@ -534,7 +534,7 @@ namespace real
                 if (real_likely(rr != acc))
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
-                    mpfr_mul(acc->shadowValue, acc->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    MUL_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue * rr->originalValue;
 #endif
@@ -542,7 +542,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
-                    mpfr_mul(acc->shadowValue, tmp->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    MUL_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue * rr->originalValue;
 #endif
@@ -556,7 +556,7 @@ namespace real
             {
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
-                mpfr_mul_d(acc->shadowValue, acc->shadowValue, r, MPFR_RNDN);
+                MUL_RD(acc->shadowValue, acc->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue * r;
 #endif
@@ -572,7 +572,7 @@ namespace real
                 if (real_likely(ll != acc))
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                    mpfr_mul(acc->shadowValue, ll->shadowValue, acc->shadowValue, MPFR_RNDN);
+                    MUL_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue * acc->originalValue;
 #endif
@@ -580,7 +580,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                    mpfr_mul(acc->shadowValue, ll->shadowValue, tmp->shadowValue, MPFR_RNDN);
+                    MUL_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue * tmp->originalValue;
 #endif
@@ -595,7 +595,7 @@ namespace real
             {
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_mul(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue, MPFR_RNDN);
+                MUL_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue * tmp2->originalValue;
 #endif
@@ -615,7 +615,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_sub(acc->shadowValue, ll->shadowValue, rr->shadowValue, MPFR_RNDN);
+                SUB_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue - rr->originalValue;
 #endif
@@ -629,7 +629,7 @@ namespace real
                 const RealBase<Real> &l = exp.derived().lhs;
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_sub_d(acc->shadowValue, ll->shadowValue, r, MPFR_RNDN);
+                SUB_RD(acc->shadowValue, ll->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue - r;
 #endif
@@ -642,7 +642,7 @@ namespace real
                 const double &l = exp.derived().lhs;
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_d_sub(acc->shadowValue, l, rr->shadowValue, MPFR_RNDN);
+                SUB_DR(acc->shadowValue, l, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = l - rr->originalValue;
 #endif
@@ -658,7 +658,7 @@ namespace real
                 if (real_likely(rr != acc))
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
-                    mpfr_sub(acc->shadowValue, acc->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    SUB_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue - rr->originalValue;
 #endif
@@ -666,7 +666,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
-                    mpfr_sub(acc->shadowValue, tmp->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    SUB_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue - rr->originalValue;
 #endif
@@ -680,7 +680,7 @@ namespace real
             {
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
-                mpfr_sub_d(acc->shadowValue, acc->shadowValue, r, MPFR_RNDN);
+                SUB_RD(acc->shadowValue, acc->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue - r;
 #endif
@@ -692,7 +692,7 @@ namespace real
             {
                 const double &l = exp.derived().lhs;
                 ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                mpfr_d_sub(acc->shadowValue, l, acc->shadowValue, MPFR_RNDN);
+                SUB_DR(acc->shadowValue, l, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = l - acc->originalValue;
 #endif
@@ -708,7 +708,7 @@ namespace real
                 if (real_likely(ll != acc))
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                    mpfr_sub(acc->shadowValue, ll->shadowValue, acc->shadowValue, MPFR_RNDN);
+                    SUB_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue - acc->originalValue;
 #endif
@@ -716,7 +716,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                    mpfr_sub(acc->shadowValue, ll->shadowValue, tmp->shadowValue, MPFR_RNDN);
+                    SUB_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue - tmp->originalValue;
 #endif
@@ -731,7 +731,7 @@ namespace real
             {
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_sub(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue, MPFR_RNDN);
+                SUB_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue - tmp2->originalValue;
 #endif
@@ -751,7 +751,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_div(acc->shadowValue, ll->shadowValue, rr->shadowValue, MPFR_RNDN);
+                DIV_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue / rr->originalValue;
 #endif
@@ -765,7 +765,7 @@ namespace real
                 const RealBase<Real> &l = exp.derived().lhs;
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_div_d(acc->shadowValue, ll->shadowValue, r, MPFR_RNDN);
+                DIV_RD(acc->shadowValue, ll->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue / r;
 #endif
@@ -778,7 +778,7 @@ namespace real
                 const double &l = exp.derived().lhs;
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_d_div(acc->shadowValue, l, rr->shadowValue, MPFR_RNDN);
+                DIV_DR(acc->shadowValue, l, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = l / rr->originalValue;
 #endif
@@ -794,7 +794,7 @@ namespace real
                 if (real_likely(rr != acc))
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
-                    mpfr_div(acc->shadowValue, acc->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    DIV_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue / rr->originalValue;
 #endif
@@ -802,7 +802,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
-                    mpfr_div(acc->shadowValue, tmp->shadowValue, rr->shadowValue, MPFR_RNDN);
+                    DIV_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue / rr->originalValue;
 #endif
@@ -816,7 +816,7 @@ namespace real
             {
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
-                mpfr_div_d(acc->shadowValue, acc->shadowValue, r, MPFR_RNDN);
+                DIV_RD(acc->shadowValue, acc->shadowValue, r);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue / r;
 #endif
@@ -828,7 +828,7 @@ namespace real
             {
                 const double &l = exp.derived().lhs;
                 ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                mpfr_d_div(acc->shadowValue, l, acc->shadowValue, MPFR_RNDN);
+                DIV_DR(acc->shadowValue, l, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = l / acc->originalValue;
 #endif
@@ -844,7 +844,7 @@ namespace real
                 if (ll != acc)
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
-                    mpfr_div(acc->shadowValue, ll->shadowValue, acc->shadowValue, MPFR_RNDN);
+                    DIV_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue / acc->originalValue;
 #endif
@@ -852,7 +852,7 @@ namespace real
                 else
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                    mpfr_div(acc->shadowValue, ll->shadowValue, tmp->shadowValue, MPFR_RNDN);
+                    DIV_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
 #ifdef KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue / tmp->originalValue;
 #endif
@@ -867,7 +867,7 @@ namespace real
             {
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_div(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue, MPFR_RNDN);
+                DIV_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue / tmp2->originalValue;
 #endif
@@ -901,7 +901,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fma(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, rr->originalValue);
 #endif
@@ -917,7 +917,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fma(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, rr->originalValue);
 #endif
@@ -935,7 +935,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
 
-                mpfr_fma(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, rr->originalValue);
 #endif
@@ -952,7 +952,7 @@ namespace real
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr mm = m.derived().shadow;
-                mpfr_fma(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, tmpR->originalValue);
 #endif
@@ -968,7 +968,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fma(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, rr->originalValue);
 #endif
@@ -985,7 +985,7 @@ namespace real
                 const RealBase<Real> &m = exp.derived().mhs;
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr mm = m.derived().shadow;
-                mpfr_fma(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, tmpR->originalValue);
 #endif
@@ -1002,7 +1002,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_fma(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, tmpR->originalValue);
 #endif
@@ -1019,7 +1019,7 @@ namespace real
                 const sval_ptr tmpL = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_fma(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMA(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, tmpR->originalValue);
 #endif
@@ -1043,7 +1043,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fms(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, -rr->originalValue);
 #endif
@@ -1059,7 +1059,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fms(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, -rr->originalValue);
 #endif
@@ -1077,7 +1077,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fms(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, -rr->originalValue);
 #endif
@@ -1095,7 +1095,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr mm = m.derived().shadow;
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_fms(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, -tmpR->originalValue);
 #endif
@@ -1112,7 +1112,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
-                mpfr_fms(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, -rr->originalValue);
 #endif
@@ -1129,7 +1129,7 @@ namespace real
                 const RealBase<Real> &m = exp.derived().mhs;
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr mm = m.derived().shadow;
-                mpfr_fms(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, -tmpR->originalValue);
 #endif
@@ -1146,7 +1146,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr ll = l.derived().shadow;
-                mpfr_fms(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, -tmpR->originalValue);
 #endif
@@ -1163,7 +1163,7 @@ namespace real
                 const sval_ptr tmpL = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
-                mpfr_fms(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue, MPFR_RNDN);
+                FMS(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
 #ifdef KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, -tmpR->originalValue);
 #endif

@@ -1,14 +1,17 @@
 #ifndef SHADOW_VALUE_HPP
 #define SHADOW_VALUE_HPP
-#include <mpfr.h>
+
+#include "MPFRPort.hpp"
 #include "RealUtil.hpp"
+
+
 
 namespace real
 {
     struct ShadowState
     {
         double originalValue;
-        mpfr_t shadowValue;
+        HP_TYPE shadowValue;
         double avgRelativeError;
     };
     typedef ShadowState *sval_ptr;
@@ -18,11 +21,11 @@ namespace real
     {
         inline void construct(ShadowState &v)
         {
-            mpfr_init2(v.shadowValue, p);
+            INIT(v.shadowValue, p);
         }
         inline void destruct(ShadowState &v)
         {
-            mpfr_clear(v.shadowValue);
+            CLEAR(v.shadowValue);
         }
     };
 
