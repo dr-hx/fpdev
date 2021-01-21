@@ -65,12 +65,10 @@ public:
 
         auto extIt = exts.begin();
         std::string filename;
-        Replacements *Replace;
         while (lastExt != NULL || extIt != exts.end())
         {
             if(lastExt==NULL) {
                 filename = extIt->manager->getFilename(extIt->statement->getBeginLoc()).str();
-                Replace = &ReplaceMap[filename];
             }
 
             if (lastExt != NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
@@ -79,7 +77,7 @@ public:
                 
                 std::string parmDef = out.str();
                 Replacement Rep1 = ReplacementBuilder::create(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
-                llvm::Error err1 = Replace->add(Rep1);
+                addReplacement(Rep1);
 
                 lastExt = NULL;
                 out.str("");
@@ -94,7 +92,7 @@ public:
                 if(isNonOverlappedStmt(extIt->expression)) {
                     std::string stmt_Str = print(extIt->expression, &helper);
                     Replacement Rep2 = ReplacementBuilder::create(*extIt->manager, extIt->expression, stmt_Str);
-                    llvm::Error err2 = Replace->add(Rep2);
+                    addReplacement(Rep2);
                 }
                 
                 lastExt = &*extIt;

@@ -48,9 +48,6 @@ public:
         if (cvs == NULL && lis == NULL)
             return;
 
-        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
-        Replacements &Replace = ReplaceMap[filename];
-
         std::ostringstream out;
         if (lis != NULL)
         {
@@ -61,18 +58,18 @@ public:
             out << flatten_declStmt(cvs) << std::endl;
         }
         Replacement RepCond1 = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, out.str());
-        llvm::Error err1 = Replace.add(RepCond1);
+        addReplacement(RepCond1);
 
         if (lis != NULL)
         {
             Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), lis, "");
-            llvm::Error err2 = Replace.add(RepCond2);
+            addReplacement(RepCond2);
         }
         if (cvs != NULL)
         {
             VarDecl *var = (VarDecl *)cvs->getSingleDecl();
             Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), cvs, var->getNameAsString());
-            llvm::Error err2 = Replace.add(RepCond2);
+            addReplacement(RepCond2);
         }
     }
 };
@@ -99,9 +96,6 @@ public:
         if (decl == NULL && init == NULL && cond==NULL && inc==NULL)
             return;
 
-        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
-        Replacements &Replace = ReplaceMap[filename];
-
         std::ostringstream prefixOut;
 
         // handle init
@@ -114,17 +108,17 @@ public:
             prefixOut << print(init) << ";" << std::endl; // it is better to extract fp changes out only
         }
         Replacement RepPrefix = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
-        llvm::Error err1 = Replace.add(RepPrefix);
+        addReplacement(RepPrefix);
 
         if (decl != NULL)
         {
             Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), decl, ";");
-            llvm::Error err2 = Replace.add(RepInit);
+            addReplacement(RepInit);
         }
         if (init != NULL)
         {
             Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), init, "");
-            llvm::Error err2 = Replace.add(RepInit);
+            addReplacement(RepInit);
         }
 
         std::ostringstream bodyOut;
@@ -132,21 +126,21 @@ public:
         if (cond != NULL)
         {
             Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "");
-            llvm::Error err2 = Replace.add(RepCond);
+            addReplacement(RepCond);
             bodyOut << "{\n";
             bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
             Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
-            llvm::Error errBodyF = Replace.add(RepBodyF);
+            addReplacement(RepBodyF);
         }
         bodyOut.str("");
         if (inc != NULL)
         {
             Replacement RepInc = ReplacementBuilder::create(*(Result.SourceManager), inc, "");
-            llvm::Error err2 = Replace.add(RepInc);
+            addReplacement(RepInc);
             bodyOut << print(inc) << ";\n}\n";
             Replacement RepBodyB = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
-            llvm::Error errBodyB = Replace.add(RepBodyB);
+            addReplacement(RepBodyB);
         }
     }
 };
@@ -170,9 +164,6 @@ public:
         if (decl == NULL && cond==NULL)
             return;
 
-        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
-        Replacements &Replace = ReplaceMap[filename];
-
         std::ostringstream prefixOut;
 
         // handle init
@@ -181,10 +172,10 @@ public:
             prefixOut << "// semantics of this while may be changed !!\n";
             prefixOut << flatten_declStmt(decl) << std::endl;
             Replacement RepPrefix = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
-            llvm::Error err1 = Replace.add(RepPrefix);
+            addReplacement(RepPrefix);
 
             Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), decl, "");
-            llvm::Error err2 = Replace.add(RepInit);
+            addReplacement(RepInit);
         }
 
         std::ostringstream bodyOut;
@@ -192,12 +183,12 @@ public:
         if (cond != NULL)
         { 
             Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
-            llvm::Error err2 = Replace.add(RepCond);
+            addReplacement(RepCond);
             bodyOut << "{\n";
             bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
             // because body must be something like {...}, we replace the open bracket
             Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getBeginLoc(), 1, bodyOut.str());
-            llvm::Error errBodyF = Replace.add(RepBodyF);
+            addReplacement(RepBodyF);
         }
     }
 };
@@ -215,18 +206,15 @@ public:
         const DoStmt *stmt = Result.Nodes.getNodeAs<DoStmt>("parent");
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
 
-        auto filename = Result.SourceManager->getFilename(stmt->getBeginLoc()).str();
-        Replacements &Replace = ReplaceMap[filename];
-
         std::ostringstream bodyOut;
 
         Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
-        llvm::Error err2 = Replace.add(RepCond);
+        addReplacement(RepCond);
         bodyOut << "if(!(" << print(cond) << ")) {break;}\n";
         bodyOut << "}";
         // because body must be something like {...}, we replace the open bracket
         Replacement RepBodyF = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBody()->getEndLoc(), 1, bodyOut.str());
-        llvm::Error errBodyF = Replace.add(RepBodyF);
+        addReplacement(RepBodyF);
     }
 };
 

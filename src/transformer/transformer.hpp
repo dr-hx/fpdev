@@ -249,6 +249,21 @@ public:
             return out.str();
         }
     }
+
+    void addReplacement(Replacement &r)
+    {
+        auto path = r.getFilePath().str();
+        if(targets->count(path)==0) return; // out of targets
+        Replacements &replace = ReplaceMap[path];
+        int size = replace.size();
+        auto err = replace.add(r);
+        if(err)
+        {
+            llvm::errs() << "rewriting failed at " << path << "\n";
+            llvm::errs() <<"before add " << size <<", now " << replace.size() << "\n";
+            llvm::errs().indent(4) << r.getReplacementText();
+        }
+    }
 };
 
 class RecursiveRewriteMatchHandler : public MatchHandler

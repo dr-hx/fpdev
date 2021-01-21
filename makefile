@@ -11,7 +11,6 @@ fn=test.cpp
 
 
 CC = /usr/bin/clang++
-INCL_PATHS = -I/usr/local/opt/llvm/include -I${SRC_DIR}
 LIB_PATHS = -L/usr/local/opt/llvm/lib
 
 # COMPILER_FLAGS = -std=c++17
@@ -21,6 +20,8 @@ CXXFLAGS := -std=c++17 -fno-rtti -O0 -g
 LLVM_BIN_PATH := /usr/local/opt/llvm/bin
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
 LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
+
+EXTRA_FLAGS := -- -I$(SRC_DIR)/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include
 
 CLANG_LIBS := \
 	-lclangAST \
@@ -81,16 +82,16 @@ testnorm : normalization
 	rm -r ${TEST_DERIVED_BASE}; mkdir ${TEST_DERIVED_BASE}; cp ${TEST_BASE}/${fn} ${TEST_DERIVED_BASE}/${fn}
 	for n in $(passObjects); \
 	do \
-		$$n ${TEST_DERIVED_BASE}/${fn};\
+		$$n ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\
 	done
 
 
 testins : instrumentation testnorm
 	for name in $(transObjects); \
 	do \
-		$$name ${TEST_DERIVED_BASE}/${fn};\
+		$$name ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\
 	done
-	./bin/passClean ${TEST_DERIVED_BASE}/${fn};
+	# ./bin/passClean ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);
 
 .PHONY : normalization
 .PHONY : instrumentation

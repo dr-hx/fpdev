@@ -44,6 +44,12 @@ auto referencedParmVar = callExpr(forEachArgumentWithParam(declRefExpr(to(fpVarD
 auto fpParmDef = parmVarDecl(hasType(fpType), hasAncestor(functionDecl(hasBody(compoundStmt().bind("def-site"))))).bind("def");
 auto fpVarDef = declStmt(forEach(varDecl(hasType(fpType), optionally(hasInitializer(callFpFunc.bind("rhs")))).bind("def"))).bind("def-site");
 
+auto fpConsArrVarDef = declStmt(forEach(varDecl(hasType(constantArrayType(hasElementType(fpType)))).bind("arr-def"))).bind("def-site");
+
+auto fpVarDefGlobal = varDecl(hasType(fpType()), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+auto fpConsArrVarDefGlobal = varDecl(hasType(constantArrayType(hasElementType(fpType))), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+
+
 // non local var collection
 auto fpAddrRes = unaryOperator(hasOperatorName("*"), hasType(fpType)).bind("lFpVal");
 auto fpRefUse = declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpType)))))).bind("lFpVal");
@@ -67,6 +73,11 @@ auto fpCallArg = callExpr(callee(fpFunc.bind("callee")), forEachArgumentWithPara
 auto stmtToBeConverted = compoundStmt(forEach(stmt(anyOf(fpInc, fpAssignFpCall, fpAssignFpExpr, callFpFunc)).bind("stmt")));
 // auto fpVarDefWithCallInitializer = declStmt(forEach(varDecl(hasType(fpType), hasInitializer(callFpFunc.bind("init"))).bind("var"))).bind("declStmt");
 
+auto fpDynArrVarDef_new = cxxNewExpr(hasType(pointerType(pointee(fpType))), hasArraySize(expr().bind("size"))).bind("alloc");
+auto fpDynArrVarDef_malloc = explicitCastExpr(hasDestinationType(pointerType(pointee(fpType))), hasSourceExpression(callExpr(callee(functionDecl(hasName("malloc"))), hasArgument(0, expr().bind("size"))))).bind("alloc");
+auto fpDynArrVarUndef_delete = cxxDeleteExpr(hasDescendant(declRefExpr(to(varDecl(hasType(pointerType(pointee(fpType)))))).bind("pointer"))).bind("free");
+auto fpDynArrVarUndef_free = callExpr(callee(functionDecl(hasName("free"))), hasArgument(0, expr(hasType(pointerType(pointee(fpType)))).bind("pointer"))).bind("free");;
+
 // local fp var = fpVarDeclInFunc - sharedAddressVar - referencedVar - referencedParmVar
 
 // a stmt is closed, if it is a return or a closed ifStmt/compundStmt/switchStmt
@@ -83,21 +94,97 @@ auto outStmt = stmt(anyOf(breakStmt(), returnStmt(optionally(hasReturnValue(stmt
 // root: parent = NULL, statement = NULL
 // function decl: parent != NULL, statement = NULL
 
+struct AllocSite
+{
+    const Expr* size;
+    const Expr* alloc;
+    SourceRange rangeInFile;
+    bool isNew;
+
+    AllocSite(const Expr* a, const Expr* s, SourceManager& manager) : alloc(a), size(s), rangeInFile(manager.getFileLoc(a->getBeginLoc()), manager.getFileLoc(a->getEndLoc())) {
+        isNew = isa<CXXNewExpr>(a);
+    }
+};
+
+struct FreeSite
+{
+    const Expr* pointer;
+    const Expr* free;
+    SourceRange rangeInFile;
+    FreeSite(const Expr* f, const Expr* p, SourceManager& manager) : free(f), pointer(p), rangeInFile(manager.getFileLoc(f->getBeginLoc()), manager.getFileLoc(f->getEndLoc())) {}
+};
+
+struct DynArrRecord
+{
+    std::vector<AllocSite> allocSites;
+    std::vector<FreeSite> freeSites;
+
+    void logAlloc(const Expr* a, const Expr *s, SourceManager& manager)
+    {
+        allocSites.push_back(AllocSite(a, s, manager));
+    }
+
+    void logFree(const Expr* a, const Expr *s, SourceManager& manager)
+    {
+        freeSites.push_back(FreeSite(a, s, manager));
+    }
+
+    void clear()
+    {
+        allocSites.clear();
+        freeSites.clear();
+    }
+};
+
+
 struct VarDef
 {
     const Stmt *defSite;
     const VarDecl *varDef;
-    const CallExpr *callInitializer;
-    VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), callInitializer(init) {}
+
+    VarDef(const VarDecl *def, const Stmt *site) : defSite(site), varDef(def) {}
+    virtual ~VarDef() {}
+    
     bool isParm()
     {
         return isa<ParmVarDecl>(varDef);
     }
+
+    virtual bool isDynamic() const  = 0;
+    virtual bool isSingle() const = 0;
+    // const CallExpr *callInitializer;
+    // VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), callInitializer(init) {}
+    // bool isParm()
+    // {
+    //     return isa<ParmVarDecl>(varDef);
+    // }
+};
+
+struct SingleVarDef : public VarDef
+{
+    const CallExpr *callInitializer;
+    SingleVarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : VarDef(def,site), callInitializer(init) {}
+    virtual bool isDynamic() const {return false;}
+    virtual bool isSingle() const {return true;}
+};
+
+struct ArrVarDef : public VarDef
+{
+    ArrVarDef(const VarDecl *def, const Stmt *site, const Expr* len, int f, bool dy) : VarDef(def,site), lengthExpr(len), length(), factor(f), dynamic(dy) {}
+    ArrVarDef(const VarDecl *def, const Stmt *site, llvm::APInt len, int f, bool dy) : VarDef(def,site), lengthExpr(NULL), length(len), factor(f), dynamic(dy) {}
+    const Expr* lengthExpr;
+    llvm::APInt length;
+    int factor; // sizeof(double) or 1
+    bool dynamic;
+    virtual bool isDynamic() const {return dynamic;}
+    virtual bool isSingle() const {return false;}
 };
 
 struct VarDefRecord
 {
     std::vector<VarDef *> defs;
+    std::vector<VarDef *> globalDefs; // FIXME
+    std::map<const VarDecl*, VarDef*> index;
     ~VarDefRecord()
     {
         clear();
@@ -107,11 +194,22 @@ struct VarDefRecord
         for (auto vd : defs)
             delete vd;
         defs.clear();
+        index.clear();
     }
-    void insert(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL)
+    void insert(const VarDecl *def, const Stmt *site, const CallExpr *init)
     {
-        VarDef *vd = new VarDef(def, site, init);
+        VarDef *vd = new SingleVarDef(def, site, init);
         defs.push_back(vd);
+        index[def] = vd;
+    }
+    void insert(const VarDecl *arrdef, const Stmt *site)
+    {
+        auto type = (const ConstantArrayType*)arrdef->getType().getTypePtr();
+        VarDef *vd = NULL;
+        if(type->getSizeExpr()!=NULL) vd = new ArrVarDef(arrdef, site, type->getSizeExpr(), 1, false);
+        else vd = new ArrVarDef(arrdef, site, type->getSize(), 1, false);
+        defs.push_back(vd);
+        index[arrdef] = vd;
     }
     std::map<const Stmt *, std::vector<const VarDef *>> grouping()
     {
@@ -124,19 +222,6 @@ struct VarDefRecord
         return result;
     }
 };
-
-int getParmID(const ParmVarDecl* parm)
-{
-    llvm::outs() << parm->getNameAsString() << "\n";
-    const FunctionDecl* func = (FunctionDecl*) parm->getDeclContext();
-    assert(func!=NULL);
-    int size = func->getNumParams();
-    for(int i=0;i<size;i++)
-    {
-        if(func->getParamDecl(i)==parm) return i;
-    }
-    return -1;
-}
 
 struct CallSite
 {
@@ -337,6 +422,7 @@ struct Scope : public ScopeItem
 
         if (isFuncDecl())
         {
+            if(subItems.size()==0) return false;
             Scope *sc = (Scope *)subItems[0];
             sc->varDecls.push_back(decl);
             decl->declaredScope = sc;
@@ -347,6 +433,7 @@ struct Scope : public ScopeItem
             {
                 decl->decl->print(llvm::outs());
                 llvm::outs() << "\n";
+                return true;
             }
             varDecls.push_back(decl);
             decl->declaredScope = this;
@@ -451,6 +538,10 @@ struct Scope : public ScopeItem
     virtual void dump(const SourceManager &Manager, unsigned int indent)
     {
         ScopeItem::dump(Manager, indent);
+        for(auto v : varDecls)
+        {
+            llvm::outs().indent(indent + 4) << "$" << v->decl->getNameAsString() <<"\n";
+        }
         for (auto s : subItems)
         {
             s->dump(Manager, indent + 4);
@@ -485,11 +576,18 @@ struct ScopeTree : public Scope
 {
     std::map<const VarDecl *, VarDeclInFile *> varDeclMap;
     std::map<const Stmt *, ScopeItem *> stmtMap;
+
+    const std::vector<std::string> *targets;
     ScopeTree() : Scope() {}
     virtual bool isRoot() { return true; }
 
     virtual bool insert(ScopeItem *scope)
     {
+        if(scope->rangeInFile.isInvalid())
+        {
+            return true;
+        }
+        
         if (Scope::insert(scope) == false)
         {
             llvm::outs() << "failed to insert\n";
@@ -555,6 +653,8 @@ struct VarUseAnalysis
 {
     std::set<const VarDecl *> localDeclaredVar;
     std::set<const VarDecl *> sharedVar;
+    
+    std::set<const VarDecl *> localConstantArrayVar;
 
     void declare(const VarDecl *v)
     {
@@ -568,6 +668,11 @@ struct VarUseAnalysis
     bool isInteresting(const VarDecl *v)
     {
         return localDeclaredVar.count(v) != 0;
+    }
+
+    bool isConstantArray(const VarDecl *v)
+    {
+        return localConstantArrayVar.count(v)!=0;
     }
 
     bool isShared(const VarDecl *v)
@@ -704,6 +809,7 @@ struct VarUseAnalysis
     {
         localDeclaredVar.clear();
         sharedVar.clear();
+        localConstantArrayVar.clear();
     }
 };
 
@@ -742,219 +848,13 @@ protected:
     VarDefRecord varDefs;           // handle local var def
     std::set<const Expr *> lFpVals; // handle left fp values
     CallSites callSites;
+    DynArrRecord dynArrRecord;
+
 
     const SourceManager *manager;
-    Replacements *replace;
     std::string filename;
     std::vector<FpStmt> fpStatements;
     // std::vector<const ParmVarDecl *> fpParameters;
-
-public:
-    FpArithInstrumentation(std::map<std::string, Replacements> &r) : MatchHandler(r)
-    {
-        manager = NULL;
-        scopeTree = NULL;
-    }
-    virtual void run(const MatchFinder::MatchResult &Result)
-    {
-        {
-            const VarDecl *decl = Result.Nodes.getNodeAs<VarDecl>("varDecl"); // var def
-            const VarDecl *sharedVar = Result.Nodes.getNodeAs<VarDecl>("refVar");
-            const VarDecl *def = Result.Nodes.getNodeAs<VarDecl>("def");
-
-            if (decl != NULL)
-            {
-                recordDeclaredFpVar(decl, Result);
-                return;
-            }
-
-            if (def != NULL)
-            {
-                const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
-                const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
-                varDefs.insert(def, site, init);
-                return;
-            }
-
-            if (sharedVar != NULL)
-            {
-                recordSharedFpVar(sharedVar, Result);
-                return;
-            }
-        }
-
-        {
-            const Expr *lFpVal = Result.Nodes.getNodeAs<Expr>("lFpVal");
-            if (lFpVal != NULL)
-            {
-                lFpVals.insert(lFpVal);
-                return;
-            }
-        }
-
-        {
-            auto call = Result.Nodes.getNodeAs<CallExpr>("call");
-            if (call != NULL)
-            {
-                auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
-                auto arg = Result.Nodes.getNodeAs<Expr>("arg");
-                auto parm = Result.Nodes.getNodeAs<ParmVarDecl>("parm");
-
-                callSites.insert(call, callee, arg, parm);
-            }
-        }
-
-        {
-            const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-            if (stmt != NULL)
-            {
-                if (isa<UnaryOperator>(stmt))
-                {
-                    fpStatements.push_back(FpStmt::createFpInc(stmt));
-                }
-                else if (isa<CallExpr>(stmt))
-                {
-                    fpStatements.push_back(FpStmt::createFpCall(stmt));
-                }
-                else if (isa<BinaryOperator>(stmt))
-                {
-                    const Expr *rhs = Result.Nodes.getNodeAs<Expr>("rhs");
-                    if (isa<CallExpr>(rhs))
-                    {
-                        fpStatements.push_back(FpStmt::createFpAssignFpCall(stmt, rhs));
-                    }
-                    else
-                    {
-                        fpStatements.push_back(FpStmt::createFpAssignExpr(stmt, rhs));
-                    }
-                }
-                return;
-            }
-        }
-
-        // {
-        //     const Stmt *declStmt = Result.Nodes.getNodeAs<Stmt>("declStmt");
-        //     if (declStmt != NULL)
-        //     {
-        //         const VarDecl *varDecl = Result.Nodes.getNodeAs<VarDecl>("var");
-        //         const Stmt *rhs = Result.Nodes.getNodeAs<Stmt>("init");
-        //         fpStatements.push_back(FpStmt::createFpVarDecl(declStmt, rhs, varDecl));
-        //         return;
-        //     }
-        // }
-
-        {
-            // scope analysis
-            const FunctionDecl *funcScope = Result.Nodes.getNodeAs<FunctionDecl>("func-scope");
-            const Stmt *stmtScope = Result.Nodes.getNodeAs<Stmt>("stmt-scope");
-            const Stmt *outScope = Result.Nodes.getNodeAs<Stmt>("out-scope");
-
-            if (funcScope != NULL)
-            {
-                scopeTree->insert(new Scope(funcScope, Result.SourceManager));
-            }
-            if (stmtScope != NULL)
-            {
-                scopeTree->insert(new Scope(stmtScope, Result.SourceManager));
-            }
-            if (outScope != NULL)
-            {
-                const Expr *ret = Result.Nodes.getNodeAs<Expr>("retVal");
-                scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager, ret));
-            }
-        }
-    }
-
-    template <typename T>
-    void fillReplace(const T *d, const MatchFinder::MatchResult &Result)
-    {
-        if (manager == NULL)
-        {
-            manager = Result.SourceManager;
-            filename = manager->getFilename(d->getBeginLoc()).str();
-            replace = &ReplaceMap[filename];
-        }
-    }
-
-    void recordDeclaredFpVar(const VarDecl *d, const MatchFinder::MatchResult &Result)
-    {
-        varUse.declare(d);
-        fillReplace(d, Result);
-    }
-    void recordSharedFpVar(const VarDecl *d, const MatchFinder::MatchResult &Result)
-    {
-        varUse.share(d);
-        fillReplace(d, Result);
-    }
-
-    virtual void onStartOfTranslationUnit()
-    {
-        manager = NULL;
-        replace = NULL;
-        scopeTree = new ScopeTree();
-    }
-
-    virtual void onEndOfTranslationUnit()
-    {
-        RealVarPrinterHelper helper(varUse, lFpVals);
-        // std::set<const VarDecl*> staticReal;
-
-        if (manager != NULL)
-        {
-
-            std::string header;
-            llvm::raw_string_ostream header_stream(header);
-
-            { // add hearder
-                header_stream << "//#include <ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
-            }
-
-            // Var and scope construction
-            for (auto var : varUse.localDeclaredVar)
-            {
-                scopeTree->addDecl(new VarDeclInFile(var, manager));
-
-                if (!varUse.isShared(var))
-                {
-                    helper.staticVarMap[var] = varUse.getSValName(var);
-                }
-            }
-
-            // scopeTree->dump(*manager, 0);
-            if (!scopeTree->check(*manager))
-            {
-                llvm::outs() << "scope tree checks failed\n";
-            }
-            else
-            {
-                llvm::outs() << "scope tree checks passed\n";
-            }
-
-            {
-                header_stream.flush();
-                Replacement rep = ReplacementBuilder::create(filename, 0, 0, header);
-                llvm::Error err = replace->add(rep);
-            }
-
-            doDefReals(helper);
-            // parameter init
-            doTranslateRealStatements(helper);
-            // undef
-            doUndefReals(scopeTree, helper);
-        }
-        clear();
-    }
-
-    void clear()
-    {
-        if (scopeTree != NULL)
-            delete scopeTree;
-        varUse.clear();
-        varDefs.clear();
-        lFpVals.clear();
-        fpStatements.clear();
-        callSites.clear();
-    }
 
     struct RealVarPrinterHelper : public PrinterHelper
     {
@@ -996,88 +896,356 @@ public:
         }
     };
 
+public:
+    FpArithInstrumentation(std::map<std::string, Replacements> &r) : MatchHandler(r)
+    {
+        manager = NULL;
+        scopeTree = NULL;
+    }
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        {
+            const VarDecl *decl = Result.Nodes.getNodeAs<VarDecl>("varDecl"); // var decl, single double var only
+            const VarDecl *sharedVar = Result.Nodes.getNodeAs<VarDecl>("refVar");
+            const VarDecl *def = Result.Nodes.getNodeAs<VarDecl>("def"); // var def
+            const VarDecl *arrDef = Result.Nodes.getNodeAs<VarDecl>("arr-def");
+
+            if (decl != NULL)
+            {
+                varUse.declare(decl);
+                fillReplace(decl, Result);
+                return;
+            }
+
+            if (def != NULL)
+            {
+                llvm::outs() << def->getNameAsString() << "\n";
+                const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
+                const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
+                varDefs.insert(def, site, init);
+                fillReplace(def, Result);
+                return;
+            }
+
+            if(arrDef !=NULL)
+            {
+                const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
+                varDefs.insert(arrDef, site);
+                varUse.localConstantArrayVar.insert(arrDef);
+                fillReplace(arrDef, Result);
+                return;
+            }
+
+            if (sharedVar != NULL)
+            {
+                varUse.share(sharedVar);
+                fillReplace(sharedVar, Result);
+                return;
+            }
+        }
+
+        {
+            const Expr *lFpVal = Result.Nodes.getNodeAs<Expr>("lFpVal");
+            if (lFpVal != NULL)
+            {
+                lFpVals.insert(lFpVal);
+                fillReplace(lFpVal, Result);
+                return;
+            }
+        }
+
+        {
+            auto call = Result.Nodes.getNodeAs<CallExpr>("call");
+            if (call != NULL)
+            {
+                auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
+                auto arg = Result.Nodes.getNodeAs<Expr>("arg");
+                auto parm = Result.Nodes.getNodeAs<ParmVarDecl>("parm");
+                callSites.insert(call, callee, arg, parm);
+                fillReplace(call, Result);
+                return;
+            }
+        }
+
+        {
+            const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
+            if (stmt != NULL)
+            {
+                if (isa<UnaryOperator>(stmt))
+                {
+                    fpStatements.push_back(FpStmt::createFpInc(stmt));
+                }
+                else if (isa<CallExpr>(stmt))
+                {
+                    fpStatements.push_back(FpStmt::createFpCall(stmt));
+                }
+                else if (isa<BinaryOperator>(stmt))
+                {
+                    const Expr *rhs = Result.Nodes.getNodeAs<Expr>("rhs");
+                    if (isa<CallExpr>(rhs))
+                    {
+                        fpStatements.push_back(FpStmt::createFpAssignFpCall(stmt, rhs));
+                    }
+                    else
+                    {
+                        fpStatements.push_back(FpStmt::createFpAssignExpr(stmt, rhs));
+                    }
+                }
+                fillReplace(stmt, Result);
+                return;
+            }
+        }
+
+        {
+            const Expr* alloc = Result.Nodes.getNodeAs<Expr>("alloc");
+            const Expr* free = Result.Nodes.getNodeAs<Expr>("free");
+
+            if(alloc!=NULL)
+            {
+                const Expr* size = Result.Nodes.getNodeAs<Expr>("size");
+                dynArrRecord.logAlloc(alloc, size, *Result.SourceManager);
+                fillReplace(alloc, Result);
+            } 
+            else if(free!=NULL)
+            {
+                const Expr* pt = Result.Nodes.getNodeAs<Expr>("pointer");
+                dynArrRecord.logFree(free, pt, *Result.SourceManager);
+                fillReplace(free, Result);
+            }
+        }
+
+        {
+            // scope analysis, must be the final part
+            const FunctionDecl *funcScope = Result.Nodes.getNodeAs<FunctionDecl>("func-scope");
+            const Stmt *stmtScope = Result.Nodes.getNodeAs<Stmt>("stmt-scope");
+            const Stmt *outScope = Result.Nodes.getNodeAs<Stmt>("out-scope");
+
+            if (funcScope != NULL)
+            {
+                scopeTree->insert(new Scope(funcScope, Result.SourceManager));
+                fillReplace(funcScope, Result);
+            }
+            if (stmtScope != NULL)
+            {
+                scopeTree->insert(new Scope(stmtScope, Result.SourceManager));
+                fillReplace(stmtScope, Result);
+            }
+            if (outScope != NULL)
+            {
+                const Expr *ret = Result.Nodes.getNodeAs<Expr>("retVal");
+                scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager, ret));
+                fillReplace(outScope, Result);
+            }
+
+            return;
+        }
+    }
+
+    template <typename T>
+    void fillReplace(const T *d, const MatchFinder::MatchResult &Result)
+    {
+        if (manager == NULL)
+        {
+            manager = Result.SourceManager;
+            filename = manager->getFilename(d->getBeginLoc()).str();
+            if(this->targets->count(filename)==0)
+            {
+                manager = NULL;
+            }
+        }
+    }
+
+    void doConstructVarScope(RealVarPrinterHelper &helper)
+    {
+        for (auto var : varUse.localDeclaredVar)
+        {
+            scopeTree->addDecl(new VarDeclInFile(var, manager));
+
+            if (!varUse.isShared(var))
+            {
+                helper.staticVarMap[var] = varUse.getSValName(var);
+            }
+        }
+        for (auto var : varUse.localConstantArrayVar)
+        {
+            scopeTree->addDecl(new VarDeclInFile(var, manager));
+        }
+    }
+
+    virtual void onStartOfTranslationUnit()
+    {
+        manager = NULL;
+        scopeTree = new ScopeTree();
+    }
+
+    virtual void onEndOfTranslationUnit()
+    {
+        // std::set<const VarDecl*> staticReal;
+
+        if (manager != NULL)
+        {
+            RealVarPrinterHelper helper(varUse, lFpVals);
+            std::string header;
+            llvm::raw_string_ostream header_stream(header);
+
+            { // add hearder
+                header_stream << "#include <ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
+            }
+
+            // Var and scope construction
+            doConstructVarScope(helper);
+
+            // scopeTree->dump(*manager, 0);
+            if (!scopeTree->check(*manager))
+            {
+                llvm::outs() << "scope tree checks failed\n";
+            }
+            else
+            {
+                llvm::outs() << "scope tree checks passed\n";
+            }
+
+            {
+                header_stream.flush();
+                Replacement rep = ReplacementBuilder::create(filename, 0, 0, header);
+                addReplacement(rep);
+            }
+
+            doDefReals(helper);
+
+            doTranslateDynArrDef();
+            // parameter init
+            doTranslateRealStatements(helper);
+            // undef
+            doUndefReals(scopeTree, helper);
+        }
+        clear();
+    }
+
+    void doTranslateDynArrDef()
+    {
+        for(auto s : dynArrRecord.allocSites)
+        {
+            int factor = s.isNew ? 1 : 8;
+            std::string code;
+            llvm::raw_string_ostream stream(code);
+            stream << "DYNDEF(" << print(s.size) << "/" << factor <<")";
+            stream.flush();
+            Replacement App = ReplacementBuilder::create(*manager, s.alloc , code);
+            addReplacement(App);
+        }
+        for(auto s : dynArrRecord.freeSites)
+        {
+            std::string code;
+            llvm::raw_string_ostream stream(code);
+            stream << "DYNUNDEF(" << print(s.pointer) << ")";
+            stream.flush();
+            Replacement App = ReplacementBuilder::create(*manager, s.free , code);
+            addReplacement(App);
+        }
+    }
+
+    void clear()
+    {
+        if (scopeTree != NULL)
+            delete scopeTree;
+        varUse.clear();
+        varDefs.clear();
+        lFpVals.clear();
+        fpStatements.clear();
+        callSites.clear();
+        dynArrRecord.clear();
+    }
+
 protected:
-    // void generateShadowVarDef(const VarDecl *var, llvm::raw_string_ostream& stream)
-    // {
-    //     std::string varName = var->getNameAsString();
-    //     std::string sVarName = varUse.getSValName(var);
-    //     // decl shadow
-    //     if (varUse.isShared(var))
-    //     {
-    //         stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
-    //     }
-    //     else
-    //     {
-    //         stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
-    //     }
-    // }
     void doDefReals(RealVarPrinterHelper &helper)
     {
         auto groups = varDefs.grouping();
 
         for (auto group : groups)
         {
-            std::string code;
-            llvm::raw_string_ostream stream(code);
             SourceRange siteRangeInFile = SourceRange(manager->getFileLoc(group.first->getBeginLoc()), manager->getFileLoc(group.first->getEndLoc()));
             bool isParmDef = isa<CompoundStmt>(group.first);
 
-            if (group.second.size() == 1 && group.second[0]->callInitializer != NULL)
-            { // def with fp call initialer
+            if (group.second.size() == 1 && group.second[0]->isSingle() && ((const SingleVarDef*)group.second[0])->callInitializer!=NULL)
+            { // single def with fp call initialer
                 std::string sValName = varUse.getSValName(group.second[0]->varDef);
-                doTranslateCall(group.first, group.second[0]->callInitializer, sValName, helper);
+                doTranslateCall(group.first, ((const SingleVarDef*)group.second[0])->callInitializer, sValName, helper);
             }
             else
             {
+                std::string code;
+                llvm::raw_string_ostream stream(code);
                 if (isParmDef)
                     stream << "{\n";
-                stream << "/*\n";
+                // stream << "/*\n";
                 for (auto v : group.second)
                 {
-                    assert(v->callInitializer == NULL);
-                    if (varUse.isInteresting(v->varDef))
+                    if(v->isSingle())
                     {
-                        std::string varName = v->varDef->getNameAsString();
-                        std::string sVarName = varUse.getSValName(v->varDef);
-                        // decl shadow
-                        if (varUse.isShared(v->varDef))
+                        assert(((const SingleVarDef*)v)->callInitializer == NULL);
+                        if (varUse.isInteresting(v->varDef))
                         {
-                            stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
-                        }
-                        else
-                        {
-                            stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
-                        }
-
-                        // init
-                        if (isParmDef)
-                        {
-                            const ParmVarDecl *parm = (const ParmVarDecl *)v->varDef;
-                            int idx = parm->getFunctionScopeIndex();
-                            stream << sVarName << "= LOADPARM(" << idx << "," << varName << ");\n";
-                        }
-                        else
-                        {
-                            if (v->varDef->hasInit())
+                            std::string varName = v->varDef->getNameAsString();
+                            std::string sVarName = varUse.getSValName(v->varDef);
+                            // decl shadow
+                            if (varUse.isShared(v->varDef))
                             {
-                                const Expr *init = v->varDef->getInit();
-                                stream << sVarName << "=" << print(init, &helper) << ";\n";
+                                stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                            }
+                            else
+                            {
+                                stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                            }
+
+                            // init
+                            if (isParmDef)
+                            {
+                                const ParmVarDecl *parm = (const ParmVarDecl *)v->varDef;
+                                int idx = parm->getFunctionScopeIndex();
+                                stream << sVarName << "= LOADPARM(" << idx << "," << varName << ");\n";
+                            }
+                            else
+                            {
+                                if (v->varDef->hasInit())
+                                {
+                                    const Expr *init = v->varDef->getInit();
+                                    stream << sVarName << "=" << print(init, &helper) << ";\n";
+                                }
                             }
                         }
                     }
+                    else
+                    { // var
+                        auto arrDef = (ArrVarDef*)v;
+                        std::string varName = v->varDef->getNameAsString();
+                        // we do not generate alias for array var. instead, we declare map space for them. this may cause extra runtime overhead
+                        // we expact that ARRDEF also initializes the array. BUT for parameters, we may also load them from call stack!
+                        if(arrDef->lengthExpr!=NULL)
+                        {
+                            stream  << "ARRDEF(" << varName << ", " << print(arrDef->lengthExpr) << "/" << arrDef->factor << ");\n"; 
+                        }
+                        else
+                        {
+                            stream  << "ARRDEF(" << varName << ", ";
+                            arrDef->length.print(stream,false);
+                            stream << "/" << arrDef->factor << ");\n"; 
+                        }
+                        
+                    }
                 }
-                stream << "*/\n";
+                // stream << "*/\n";
                 stream.flush();
                 if (isParmDef)
                 {
                     Replacement App = ReplacementBuilder::create(*manager, siteRangeInFile.getBegin(), 1, code);
-                    llvm::Error err = replace->add(App);
+                    addReplacement(App);
                 }
                 else
                 {
                     std::string originalCode = print(group.first);
                     Replacement App = ReplacementBuilder::create(*manager, group.first, originalCode + ";\n" + code);
-                    llvm::Error err = replace->add(App);
+                    addReplacement(App);
                 }
             }
         }
@@ -1096,20 +1264,30 @@ protected:
                     std::string preCode;
                     llvm::raw_string_ostream stream(preCode);
 
-                    stream << "/*\n"; // for debugging
+                    // stream << "/*\n"; // for debugging
                     for (auto v : scope->varDecls)
                     {
                         if (varUse.isSharedInteresting(v->decl))
                         {
                             stream << "UNDEF(" << v->decl->getNameAsString() << ");\n";
                         }
+                        else if(varUse.isConstantArray(v->decl))
+                        {
+                            auto def = (ArrVarDef*) varDefs.index[v->decl];
+                            stream << "ARRUNDEF(" << v->decl->getNameAsString() << ", ";
+                            def->length.print(stream, false);
+                            stream << "/" << def->factor << ");\n";
+                        }
+                        else{
+                            stream <<"// leave "<< v->decl->getNameAsString() << "\n";
+                        }
                     }
-                    stream << "*/\n"; // for debugging
-                    stream << "}\n";  // for debugging
+                    // stream << "*/\n"; // for debugging
+                    stream << "}\n";
                     stream.flush();
 
                     Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getEnd(), 1, preCode);
-                    llvm::Error err = replace->add(Rep);
+                    addReplacement(Rep);
                 }
             }
             for (auto sub : scope->subItems)
@@ -1124,7 +1302,7 @@ protected:
             sbreak->parent->collectVariablesFrom(sbreak, vars);
             std::string preCode;
             llvm::raw_string_ostream stream(preCode);
-            stream << "/*\n"; // for debugging
+            // stream << "/*\n"; // for debugging
 
             if (sbreak->isSemiBreak == false)
             {
@@ -1148,7 +1326,7 @@ protected:
                         {
                             // generally, we should generate a static var for this case. Or we can analyze var use in
                             auto retName = randomIdentifier("retTmp");
-                            stream << "static SVal " << retName << " = 0; // initialize once\n";
+                            stream << "L_SVAL " << retName << " = 0; // initialize once\n";
                             stream << retName << " = std::move(" << varUse.getSValName(var) << ");// use std::move here\n";
                             stream << "PUSHRET(0," << retName << ");\n"; // use std::move here\n";
                         }
@@ -1166,12 +1344,23 @@ protected:
                 {
                     stream << "UNDEF(" << v->decl->getNameAsString() << ");\n";
                 }
+                else if (varUse.isConstantArray(v->decl))
+                {
+                    auto def = (ArrVarDef *)varDefs.index[v->decl];
+                    stream << "ARRUNDEF(" << v->decl->getNameAsString() << ", ";
+                    def->length.print(stream, false);
+                    stream << "/" << def->factor << ");\n";
+                }
+                else
+                {
+                    stream <<"// leave "<< v->decl->getNameAsString() << "\n";
+                }
             }
-            stream << "*/\n"; // for debugging
+            // stream << "*/\n"; // for debugging
             stream.flush();
 
             Replacement Rep = ReplacementBuilder::create(*manager, scopeItem->rangeInFile.getBegin(), 0, preCode);
-            llvm::Error err = replace->add(Rep);
+            addReplacement(Rep);
         }
     }
 
@@ -1180,7 +1369,7 @@ protected:
 
         std::string repCode;
         llvm::raw_string_ostream stream(repCode);
-        stream << "//"; // for debugging
+        // stream << "//"; // for debugging
         stream << "PUSHCALL();\n";
         if (callSites.has(call))
         {
@@ -1194,7 +1383,7 @@ protected:
                 }
                 if (isInterestingVar || lFpVals.count(arg) != 0)
                 {
-                    stream << "//"; // for debugging
+                    // stream << "//"; // for debugging
                     stream << "PUSHARG(" << callArg.parm->getFunctionScopeIndex() << "," << print(arg, &helper) << ");\n";
                 }
             }
@@ -1207,31 +1396,27 @@ protected:
             std::string varName = vd->getNameAsString();
             std::string sVarName = varUse.getSValName(vd);
             // decl shadow
-            stream << "//";
+            // stream << "//";
             if (varUse.isShared(vd))
             {
-                stream << "SVal &" << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
             }
             else
             {
-                stream << "static SVal " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
             }
         }
         else
             stream << ";";
 
-        stream << "//"; // for debugging
+        // stream << "//"; // for debugging
         if (ret.size() == 0)
             stream << "POPCALL()";
         else
             stream << "POPCALL(0, " << ret << ")";
         stream.flush();
         Replacement App = ReplacementBuilder::create(*manager, site, repCode);
-        llvm::Error err = replace->add(App);
-        if (err)
-        {
-            llvm::outs() << "error\n";
-        }
+        addReplacement(App);
     }
 
     void doTranslateCall(const Stmt *site, const CallExpr *call, const Expr *ret, RealVarPrinterHelper &helper)
@@ -1253,8 +1438,8 @@ protected:
             {
                 std::string originalCode = print(stmt.fpStmt);
                 std::string code = print(stmt.fpStmt, &helper);
-                Replacement App = ReplacementBuilder::create(*manager, stmt.fpStmt, originalCode + ";\n //" + code + "\n");
-                llvm::Error err = replace->add(App);
+                Replacement App = ReplacementBuilder::create(*manager, stmt.fpStmt, originalCode + ";\n" + code + "\n");
+                addReplacement(App);
             }
             break;
             case FpStmt::Type::FP_CALL:
@@ -1301,12 +1486,20 @@ int main(int argc, const char **argv)
     // def record
     tool.add(fpParmDef, handler);
     tool.add(fpVarDef, handler);
+    tool.add(fpConsArrVarDef, handler);
 
     // lvalue recording
     tool.add(fpAddrRes, handler);
     tool.add(fpArrElem, handler);
     tool.add(fpRefUse, handler);
     tool.add(fpField, handler);
+    
+
+    // dyn arr
+    tool.add(fpDynArrVarDef_new, handler);
+    tool.add(fpDynArrVarDef_malloc, handler);
+    tool.add(fpDynArrVarUndef_delete, handler);
+    tool.add(fpDynArrVarUndef_free, handler);
 
     // call sites
     tool.add(fpCallArg, handler);

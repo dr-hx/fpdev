@@ -1,6 +1,6 @@
 // #define __APPLE__ 1
 // #include <dispatch/dispatch.h>
-// #include <stdlib.h>
+#include <stdlib.h>
 // #include <stdio.h>
 
 #define HELLO d + x
@@ -12,20 +12,27 @@ int main(int argc, char const *argv[])
     double x;
     double &y = x;
 
-    test<10>(1,2);
+    double arr[10];
+
+    double *pt = (double*) malloc(sizeof(double)*5);
+    arr[0] = arr[1] / arr[2] + y;
+
+    delete pt;
+
 return 0;
 }
 
-template<int Size>
-double test(double x, double y)
-{
-    int s = 5;
-    double a[]={1,2,3,4,5}; // constant
-    double b[5]; // constant
-    double c[s+1]; //variable type
-    double d[Size]; // dependent type
-    return test<Size>(x+1, y+1) + test<Size>(x-1, 0);
-}
+// template<int Size>
+// double test(double x, double y)
+// {
+//     int s = 5;
+//     double a[]={1,2,3,4,5}; // constant
+//     double b[5]; // constant
+//     double c[s+1]; //variable type
+//     double d[Size]; // dependent type
+//     int x = sizeof(c);
+//     return test<Size>(x+1, y+1) + test<Size>(x-1, 0);
+// }
 
 // #pragma K
 // int main(int argc, char const *argv[])

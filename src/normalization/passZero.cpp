@@ -112,14 +112,9 @@ public:
     SourceManager *Manager;
 
     virtual void onEndOfTranslationUnit() {
-        Replacements *Replace = NULL;
         ParnStmtHelper helper(stmtVector);
         int count = 0;
         for(auto s : this->nonOverlappedStmts()) {
-            if(Replace==NULL) {
-                std::string fn = (Manager->getFilename(s.rangeInFile.getBegin()).str());
-                Replace = &ReplaceMap[fn];
-            }
             std::string str;
             llvm::raw_string_ostream stream(str);
             s.statement->printPretty(stream, &helper, PrintingPolicy(LangOptions()));
@@ -130,7 +125,7 @@ public:
             //     llvm::Error err2 = Replace->add(Rep2);
             // } else {
             Replacement Rep = ReplacementBuilder::create(*Manager, s.statement, stream.str());
-            llvm::Error err = Replace->add(Rep);
+            addReplacement(Rep);
             // }
         }
         nonOverlappedStmts.clear();
