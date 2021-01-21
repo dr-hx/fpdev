@@ -21,7 +21,7 @@ LLVM_BIN_PATH := /usr/local/opt/llvm/bin
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
 LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
-EXTRA_FLAGS := -- -I$(SRC_DIR)/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include
+EXTRA_FLAGS := -- -Isrc/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -std=c++17
 
 CLANG_LIBS := \
 	-lclangAST \
@@ -91,7 +91,7 @@ testins : instrumentation testnorm
 	do \
 		$$name ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\
 	done
-	# ./bin/passClean ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);
+	./bin/passClean ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);
 
 .PHONY : normalization
 .PHONY : instrumentation

@@ -46,7 +46,7 @@ auto fpVarDef = declStmt(forEach(varDecl(hasType(fpType), optionally(hasInitiali
 
 auto fpConsArrVarDef = declStmt(forEach(varDecl(hasType(constantArrayType(hasElementType(fpType)))).bind("arr-def"))).bind("def-site");
 
-auto fpVarDefGlobal = varDecl(hasType(fpType()), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+auto fpVarDefGlobal = varDecl(hasType(fpType), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
 auto fpConsArrVarDefGlobal = varDecl(hasType(constantArrayType(hasElementType(fpType))), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
 
 

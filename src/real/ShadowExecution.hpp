@@ -4,11 +4,11 @@
 
 using Addr = void*;
 using SVal = real::Real;
-using VarMap = real::VariableMap<Addr, SVal, 0x800>;
+using VarMap = real::util::VariableMap<Addr, SVal, 0x800>;
 
 
 #define L_SVAL static SVal
-#define S_SVAL SVAL&
+#define S_SVAL SVal&
 
 #define VARMAP VarMap::INSTANCE
 #define DEF(v) VARMAP[&(v)]
