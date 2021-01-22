@@ -10,28 +10,53 @@ double fabs(double x)
     else return 0 - x;
 }
 
+#define LB -30
+#define UB -20
+#define INC 0.1
+
+void testPF0()
+{
+  for (double x = LB; x < UB; x = x + INC)
+  {
+    double sum = 0.0;
+    double term = 1.0;
+    for (int i = 1; sum != sum + term; i++)
+    {
+      sum = sum + term;
+      term = term * x / i;
+    }
+    double ae = exp(x);
+    std::cout << ae <<"\n";
+    EAST_DUMP(std::cout, sum);
+    EAST_ANALYZE(std::cout, sum);
+  }
+}
+
 int main(int argc, char const *argv[])
 {
-    double a = 2.0;
-    double expect_error = 0.000001;
-    double x;
-    double actual_error;
-    unsigned iteration_count = 0;
 
-    do
-    {
-        if (a == 0.0)
-            a = 0.1; /* 避免0做分母 */
-        x = a / 2 + 1 / a;
-        actual_error = fabs(2 - x * x);
-        a = x;
+    testPF0();
+    // double a = 2.0;
+    // double expect_error = 0.000001;
+    // double x;
+    // double actual_error;
+    // unsigned iteration_count = 0;
 
-        ++iteration_count;
-        printf("%d\t%.9f\t%.9f\n", iteration_count, a, actual_error);
-        EAST_DUMP(std::cout, a);
-    } while (actual_error >= expect_error);
+    // do
+    // {
+    //     if (a == 0.0)
+    //         a = 0.1; /* 避免0做分母 */
+    //     x = a / 2 + 1 / a;
+    //     actual_error = fabs(2 - x * x);
+    //     a = x;
 
-    return 0         ;
+    //     ++iteration_count;
+    //     printf("%d\t%.9f\t%.9f\n", iteration_count, a, actual_error);
+    //     EAST_DUMP(std::cout, a);
+    //     EAST_ANALYZE(std::cout, a);
+    // } while (actual_error >= expect_error);
+
+    // return 0         ;
 }
 
 // template<int Size>

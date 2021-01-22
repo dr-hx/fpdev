@@ -1460,7 +1460,7 @@ protected:
         }
         else if(funcStrategy->isPseudoFunction(callee->getNameAsString()))
         {
-            stream << print(site, &helper) << ";";
+            doTranslatePseudoFunctionCall(stream, call, helper);
         }
         else
         { // use original function here, we use the original result for now
@@ -1494,6 +1494,26 @@ protected:
         stream.flush();
         Replacement App = ReplacementBuilder::create(*manager, site, repCode);
         addReplacement(App);
+    }
+
+    void doTranslatePseudoFunctionCall(llvm::raw_ostream& stream, const CallExpr* call, clang::PrinterHelper& helper)
+    {
+        auto funcName = call->getDirectCallee()->getNameAsString();
+        
+        if(funcName == "EAST_DUMP")
+        {
+            stream << print(call, &helper) << ";";
+        }
+        else if(funcName == "EAST_ANALYZE")
+        {
+            stream << "EAST_ANALYZE("
+                   << print(call->getArg(0), &helper)
+                   <<","
+                   << print(call->getArg(1), &helper)
+                   <<","
+                   << print(call->getArg(1))
+                   << ");";
+        }
     }
 
     void doTranslateCall(const Stmt *site, const CallExpr *call, const Expr *ret, RealVarPrinterHelper &helper)

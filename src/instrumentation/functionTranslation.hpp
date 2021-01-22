@@ -38,8 +38,7 @@ struct FunctionTranslationStrategy
 
     bool isPseudoFunction(const std::string& name)
     {
-        if(name=="EAST_DUMP") return true;
-        else return false;
+        return name.find_first_of("EAST_", 0) == 0;
     }
 
     const std::string* hasAbstractedFunction(const std::string& name)

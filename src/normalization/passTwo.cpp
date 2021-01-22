@@ -118,6 +118,16 @@ public:
             type = formal->getType();
         
         if(!isInTargets(actual, Result.SourceManager)) return;
+        
+        if(isa<CallExpr>(actual))
+        {
+            auto call = (const CallExpr*)actual;
+            if(!isInTargets(call->getDirectCallee(), Result.SourceManager))
+            {
+                if(!call->getType().getTypePtrOrNull()->isRealFloatingType()) return;
+            }
+        }
+
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
         addAsNonOverlappedStmt(actual, extractions.back().actualExpressionRange);
     }
