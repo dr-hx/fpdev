@@ -39,7 +39,7 @@ struct ReplacementBuilder
     }
 
     static Replacement create(const SourceManager &Sources, SourceLocation Start,
-                       unsigned Length, StringRef ReplacementText)
+                              unsigned Length, StringRef ReplacementText)
     {
         SourceLocation startLoc = Sources.getFileLoc(Start);
         return Replacement(Sources, startLoc, Length, ReplacementText);
@@ -47,7 +47,7 @@ struct ReplacementBuilder
 
     template <typename Node>
     static Replacement create(const SourceManager &Sources, const Node &NodeToReplace,
-                StringRef ReplacementText, const LangOptions &LangOpts = LangOptions())
+                              StringRef ReplacementText, const LangOptions &LangOpts = LangOptions())
     {
         SourceLocation startLoc = Sources.getFileLoc(NodeToReplace->getBeginLoc());
         SourceLocation endLoc = Sources.getFileLoc(NodeToReplace->getEndLoc());
@@ -88,14 +88,16 @@ struct ExpressionExtractionRequest
     SourceRange actualExpressionRange;
     SourceLocation actualStatementStartLoc;
 
-    ExpressionExtractionRequest(const Expr *a, const QualType t, const Stmt *s, const SourceManager *m) : expression(a), type(t), statement(s), manager(m) {
+    ExpressionExtractionRequest(const Expr *a, const QualType t, const Stmt *s, const SourceManager *m) : expression(a), type(t), statement(s), manager(m)
+    {
         SourceLocation startLoc = m->getFileLoc(a->getBeginLoc());
         SourceLocation endLoc = m->getFileLoc(a->getEndLoc());
         actualExpressionRange = SourceRange(startLoc, endLoc);
         actualStatementStartLoc = m->getFileLoc(s->getBeginLoc());
     }
 
-    bool cover(const ExpressionExtractionRequest &r) {
+    bool cover(const ExpressionExtractionRequest &r)
+    {
         return this->actualExpressionRange.fullyContains(r.actualExpressionRange);
     }
 
@@ -125,64 +127,85 @@ struct ExpressionExtractionRequest
     }
 };
 
-struct StmtInFile {
-    const Stmt* statement;
+struct StmtInFile
+{
+    const Stmt *statement;
     SourceRange rangeInFile;
 
-    StmtInFile(const Stmt* s, SourceRange r) : statement(s), rangeInFile(r) {}
+    StmtInFile(const Stmt *s, SourceRange r) : statement(s), rangeInFile(r) {}
 
-    StmtInFile(const Stmt* s, const SourceManager* m) : statement(s), rangeInFile(m->getFileLoc(s->getBeginLoc()),m->getFileLoc(s->getEndLoc())) {
+    StmtInFile(const Stmt *s, const SourceManager *m) : statement(s), rangeInFile(m->getFileLoc(s->getBeginLoc()), m->getFileLoc(s->getEndLoc()))
+    {
     }
-    bool cover(const StmtInFile &r) {
-        if(rangeInFile.isInvalid()) return true;
+    bool cover(const StmtInFile &r)
+    {
+        if (rangeInFile.isInvalid())
+            return true;
         return this->rangeInFile.fullyContains(r.rangeInFile);
     }
 };
 
-struct NonOverlappedStmts {
+struct NonOverlappedStmts
+{
     std::vector<StmtInFile> roots;
 
-    void add(StmtInFile stmtInFile) {
+    void add(StmtInFile stmtInFile)
+    {
         int size = roots.size();
         bool cover = false;
-        for(int i=0;i<size;) {
-            if(stmtInFile.cover(roots[i])) {
-                if(size-1>i) {
-                    roots[i] = roots[size-1];
+        for (int i = 0; i < size;)
+        {
+            if (stmtInFile.cover(roots[i]))
+            {
+                if (size - 1 > i)
+                {
+                    roots[i] = roots[size - 1];
                 }
-                size --;
-            } else if(roots[i].cover(stmtInFile)) {
+                size--;
+            }
+            else if (roots[i].cover(stmtInFile))
+            {
                 cover = true;
-                assert(size==roots.size());
+                assert(size == roots.size());
                 break;
-            } else i++;
+            }
+            else
+                i++;
         }
-        
-        for(int i=roots.size(); i>size; i--) {
+
+        for (int i = roots.size(); i > size; i--)
+        {
             roots.pop_back();
         }
 
-        if(!cover) {
+        if (!cover)
+        {
             roots.push_back(stmtInFile);
         }
     }
 
-    void clear() {
+    void clear()
+    {
         roots.clear();
     }
 
-    void add(const Stmt* s, SourceRange rangeInFile) {
-        add(StmtInFile(s,rangeInFile));
+    void add(const Stmt *s, SourceRange rangeInFile)
+    {
+        add(StmtInFile(s, rangeInFile));
     }
 
-    bool contain(const Stmt* stmt) {
-        for(auto s : roots) {
-            if(s.statement==stmt) return true;
+    bool contain(const Stmt *stmt)
+    {
+        for (auto s : roots)
+        {
+            if (s.statement == stmt)
+                return true;
         }
         return false;
     }
 
-    const std::vector<StmtInFile>& operator()() {
+    const std::vector<StmtInFile> &operator()()
+    {
         return roots;
     }
 };
@@ -192,13 +215,14 @@ class MatchHandler : public MatchFinder::MatchCallback
 protected:
     std::map<std::string, Replacements> &ReplaceMap;
     const std::set<std::string> *targets;
+
 protected:
     NonOverlappedStmts nonOverlappedStmts;
-    void addAsNonOverlappedStmt(const Stmt *stmt, const SourceRange& range)
+    void addAsNonOverlappedStmt(const Stmt *stmt, const SourceRange &range)
     {
         nonOverlappedStmts.add(StmtInFile(stmt, range));
     }
-    void addAsNonOverlappedStmt(const Stmt *stmt, const SourceManager* manager)
+    void addAsNonOverlappedStmt(const Stmt *stmt, const SourceManager *manager)
     {
         nonOverlappedStmts.add(StmtInFile(stmt, manager));
     }
@@ -206,9 +230,11 @@ protected:
     {
         return nonOverlappedStmts.contain(stmt);
     }
+
 public:
     MatchHandler(std::map<std::string, Replacements> &r) : ReplaceMap(r) {}
-    void setTargets(const std::set<std::string> *t) {
+    void setTargets(const std::set<std::string> *t)
+    {
         targets = t;
     }
 
@@ -219,6 +245,13 @@ public:
         stmt->printPretty(stream, helper, PrintingPolicy(LangOptions()));
         stream.flush();
         return str;
+    }
+
+    template<typename N>
+    bool isInTargets(const N* n, const SourceManager* m)
+    {
+        auto fn = m->getFilename(m->getFileLoc(n->getBeginLoc())).str();
+        return targets->count(fn) != 0;
     }
 
     static std::string flatten_declStmt(const DeclStmt *decl)
@@ -253,14 +286,15 @@ public:
     void addReplacement(Replacement &r)
     {
         auto path = r.getFilePath().str();
-        if(targets->count(path)==0) return; // out of targets
+        if (targets->count(path) == 0)
+            return; // out of targets
         Replacements &replace = ReplaceMap[path];
         int size = replace.size();
         auto err = replace.add(r);
-        if(err)
+        if (err)
         {
             llvm::errs() << "rewriting failed at " << path << "\n";
-            llvm::errs() <<"before add " << size <<", now " << replace.size() << "\n";
+            llvm::errs() << "before add " << size << ", now " << replace.size() << "\n";
             llvm::errs().indent(4) << r.getReplacementText();
         }
     }
@@ -270,6 +304,7 @@ class RecursiveRewriteMatchHandler : public MatchHandler
 {
 protected:
     std::vector<ExpressionExtractionRequest> extractionRequests;
+
 public:
     RecursiveRewriteMatchHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
 
@@ -279,7 +314,7 @@ public:
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("statement");    // the statement that contains the expression
         QualType type = actual->getType();
         extractionRequests.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
-        
+
         addAsNonOverlappedStmt(actual, extractionRequests.back().actualExpressionRange);
     }
 
@@ -341,10 +376,58 @@ public:
     virtual void convertSubExpression(Replacements *Replace, const ExpressionExtractionRequest &request, ExtractionPrinterHelper &helper) = 0;
 };
 
+class CodeAnalysisTool
+{
+protected:
+    CommonOptionsParser& Options;
+    ClangTool Tool;
+    MatchFinder Finder;
+    std::vector<MatchHandler *> handlerVector;
+    std::set<std::string> targets;
+    std::string toolName;
+
+public:
+    CodeAnalysisTool(CommonOptionsParser& Options, std::string name = "Unnamed Tool") : Tool(Options.getCompilations(), Options.getSourcePathList()),
+                                                                                        Options(Options),
+                                                                                          Finder(),
+                                                                                          toolName(name)
+    {
+        for (auto fn : Options.getSourcePathList())
+        {
+            auto f = Tool.getFiles().getFileRef(fn);
+            if (f)
+            {
+                auto rfn = f->getFileEntry().tryGetRealPathName();
+                targets.insert(rfn.str());
+            }
+        }
+    }
+
+    template <typename ASTMatcherType, typename HandlerType>
+    void add(const ASTMatcherType &matcher)
+    {
+        HandlerType *h = new HandlerType();
+        handlerVector.push_back(h);
+        add(matcher, *h);
+    }
+
+    template <typename ASTMatcherType, typename HandlerType>
+    void add(const ASTMatcherType &matcher, HandlerType &handler)
+    {
+        Finder.addMatcher(traverse(TK_IgnoreUnlessSpelledInSource, matcher), &handler);
+        handler.setTargets(&targets);
+    }
+
+    int run()
+    {
+        return Tool.run(newFrontendActionFactory(&Finder).get());
+    }
+};
+
 class CodeTransformationTool
 {
 protected:
-    CommonOptionsParser Options;
+    CommonOptionsParser &Options;
     RefactoringTool Tool;
     MatchFinder Finder;
     std::vector<MatchHandler *> handlerVector;
@@ -353,14 +436,16 @@ protected:
     std::set<std::string> targets;
 
 public:
-    CodeTransformationTool(int argc, const char **argv, llvm::cl::OptionCategory category, std::string name = "Unnamed Tool") : Tool(Options.getCompilations(), Options.getSourcePathList()),
-                                                                                                                                Options(argc, argv, category),
-                                                                                                                                Finder(),
-                                                                                                                                toolName(name)
+    CodeTransformationTool(CommonOptionsParser& Opts, std::string name = "Unnamed Tool") : Tool(Opts.getCompilations(), Opts.getSourcePathList()),
+                                                                                          Options(Opts),
+                                                                                          Finder(),
+                                                                                          toolName(name)
     {
-        for(auto fn : Options.getSourcePathList()) {
+        for (auto fn : Options.getSourcePathList())
+        {
             auto f = Tool.getFiles().getFileRef(fn);
-            if(f) {
+            if (f)
+            {
                 auto rfn = f->getFileEntry().tryGetRealPathName();
                 targets.insert(rfn.str());
             }

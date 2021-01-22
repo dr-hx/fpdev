@@ -3,6 +3,7 @@
 #include "../util/random.h"
 #include "../transformer/transformer.hpp"
 #include "../transformer/analysis.hpp"
+#include "functionTranslation.hpp"
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -849,6 +850,7 @@ protected:
     std::set<const Expr *> lFpVals; // handle left fp values
     CallSites callSites;
     DynArrRecord dynArrRecord;
+    FunctionTranslationStrategy* funcStrategy;
 
 
     const SourceManager *manager;
@@ -910,14 +912,14 @@ public:
             const VarDecl *def = Result.Nodes.getNodeAs<VarDecl>("def"); // var def
             const VarDecl *arrDef = Result.Nodes.getNodeAs<VarDecl>("arr-def");
 
-            if (decl != NULL)
+            if (decl != NULL && isInTargets(decl, Result.SourceManager))
             {
                 varUse.declare(decl);
                 fillReplace(decl, Result);
                 return;
             }
 
-            if (def != NULL)
+            if (def != NULL && isInTargets(def, Result.SourceManager))
             {
                 llvm::outs() << def->getNameAsString() << "\n";
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
@@ -927,7 +929,7 @@ public:
                 return;
             }
 
-            if(arrDef !=NULL)
+            if(arrDef !=NULL && isInTargets(arrDef, Result.SourceManager))
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 varDefs.insert(arrDef, site);
@@ -936,7 +938,7 @@ public:
                 return;
             }
 
-            if (sharedVar != NULL)
+            if (sharedVar != NULL && isInTargets(sharedVar, Result.SourceManager))
             {
                 varUse.share(sharedVar);
                 fillReplace(sharedVar, Result);
@@ -946,7 +948,7 @@ public:
 
         {
             const Expr *lFpVal = Result.Nodes.getNodeAs<Expr>("lFpVal");
-            if (lFpVal != NULL)
+            if (lFpVal != NULL  && isInTargets(lFpVal, Result.SourceManager))
             {
                 lFpVals.insert(lFpVal);
                 fillReplace(lFpVal, Result);
@@ -956,7 +958,7 @@ public:
 
         {
             auto call = Result.Nodes.getNodeAs<CallExpr>("call");
-            if (call != NULL)
+            if (call != NULL && isInTargets(call, Result.SourceManager))
             {
                 auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
                 auto arg = Result.Nodes.getNodeAs<Expr>("arg");
@@ -969,7 +971,7 @@ public:
 
         {
             const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-            if (stmt != NULL)
+            if (stmt != NULL && isInTargets(stmt, Result.SourceManager))
             {
                 if (isa<UnaryOperator>(stmt))
                 {
@@ -1000,13 +1002,13 @@ public:
             const Expr* alloc = Result.Nodes.getNodeAs<Expr>("alloc");
             const Expr* free = Result.Nodes.getNodeAs<Expr>("free");
 
-            if(alloc!=NULL)
+            if(alloc!=NULL && isInTargets(alloc, Result.SourceManager))
             {
                 const Expr* size = Result.Nodes.getNodeAs<Expr>("size");
                 dynArrRecord.logAlloc(alloc, size, *Result.SourceManager);
                 fillReplace(alloc, Result);
             } 
-            else if(free!=NULL)
+            else if(free!=NULL && isInTargets(free, Result.SourceManager))
             {
                 const Expr* pt = Result.Nodes.getNodeAs<Expr>("pointer");
                 dynArrRecord.logFree(free, pt, *Result.SourceManager);
@@ -1020,17 +1022,17 @@ public:
             const Stmt *stmtScope = Result.Nodes.getNodeAs<Stmt>("stmt-scope");
             const Stmt *outScope = Result.Nodes.getNodeAs<Stmt>("out-scope");
 
-            if (funcScope != NULL)
+            if (funcScope != NULL && isInTargets(funcScope, Result.SourceManager))
             {
                 scopeTree->insert(new Scope(funcScope, Result.SourceManager));
                 fillReplace(funcScope, Result);
             }
-            if (stmtScope != NULL)
+            if (stmtScope != NULL && isInTargets(stmtScope, Result.SourceManager))
             {
                 scopeTree->insert(new Scope(stmtScope, Result.SourceManager));
                 fillReplace(stmtScope, Result);
             }
-            if (outScope != NULL)
+            if (outScope != NULL && isInTargets(outScope, Result.SourceManager))
             {
                 const Expr *ret = Result.Nodes.getNodeAs<Expr>("retVal");
                 scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager, ret));
@@ -1078,10 +1080,15 @@ public:
         scopeTree = new ScopeTree();
     }
 
+    void setFunctionStrategy(FunctionTranslationStrategy* funcStrategy)
+    {
+        this->funcStrategy = funcStrategy;
+    }
+
     virtual void onEndOfTranslationUnit()
     {
         // std::set<const VarDecl*> staticReal;
-
+        llvm::outs() <<"in end of file\n";
         if (manager != NULL)
         {
             RealVarPrinterHelper helper(varUse, lFpVals);
@@ -1170,7 +1177,7 @@ protected:
             if (group.second.size() == 1 && group.second[0]->isSingle() && ((const SingleVarDef*)group.second[0])->callInitializer!=NULL)
             { // single def with fp call initialer
                 std::string sValName = varUse.getSValName(group.second[0]->varDef);
-                doTranslateCall(group.first, ((const SingleVarDef*)group.second[0])->callInitializer, sValName, helper);
+                doTranslateCall(group.first, ((const SingleVarDef*)group.second[0])->callInitializer, sValName, group.second[0]->varDef->getNameAsString(), helper);
             }
             else
             {
@@ -1364,56 +1371,122 @@ protected:
         }
     }
 
-    void doTranslateCall(const Stmt *site, const CallExpr *call, std::string ret, RealVarPrinterHelper &helper)
+    void doTranslateCall(const Stmt *site, const CallExpr *call, std::string ret, std::string oRet, RealVarPrinterHelper &helper)
     {
 
         std::string repCode;
         llvm::raw_string_ostream stream(repCode);
         // stream << "//"; // for debugging
-        stream << "PUSHCALL();\n";
-        if (callSites.has(call))
+
+        if(funcStrategy->isTranslated(call->getDirectCallee(), manager))
         {
-            for (auto callArg : callSites[call].args)
+            stream << "PUSHCALL();\n";
+            if (callSites.has(call))
             {
-                auto arg = callArg.arg;
-                bool isInterestingVar = false;
-                if(isa<DeclRefExpr>(arg))
+                for (auto callArg : callSites[call].args)
                 {
-                    isInterestingVar = varUse.isLocalInteresting((const VarDecl*) ((const DeclRefExpr *)arg)->getDecl());
-                }
-                if (isInterestingVar || lFpVals.count(arg) != 0)
-                {
-                    // stream << "//"; // for debugging
-                    stream << "PUSHARG(" << callArg.parm->getFunctionScopeIndex() << "," << print(arg, &helper) << ");\n";
+                    auto arg = callArg.arg;
+                    bool isInterestingVar = false;
+                    if (isa<DeclRefExpr>(arg))
+                    {
+                        isInterestingVar = varUse.isLocalInteresting((const VarDecl *)((const DeclRefExpr *)arg)->getDecl());
+                    }
+                    if (isInterestingVar || lFpVals.count(arg) != 0)
+                    {
+                        // stream << "//"; // for debugging
+                        stream << "PUSHARG(" << callArg.parm->getFunctionScopeIndex() << "," << print(arg, &helper) << ");\n";
+                    }
                 }
             }
-        }
-        stream << print(site);
-        if (isa<DeclStmt>(site))
-        {
-            auto ds = (const DeclStmt *)site;
-            auto vd = (const VarDecl *)ds->getSingleDecl();
-            std::string varName = vd->getNameAsString();
-            std::string sVarName = varUse.getSValName(vd);
-            // decl shadow
-            // stream << "//";
-            if (varUse.isShared(vd))
+            stream << print(site);
+            if (isa<DeclStmt>(site))
             {
-                stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                auto ds = (const DeclStmt *)site;
+                auto vd = (const VarDecl *)ds->getSingleDecl();
+                std::string varName = vd->getNameAsString();
+                std::string sVarName = varUse.getSValName(vd);
+                // decl shadow
+                // stream << "//";
+                if (varUse.isShared(vd))
+                {
+                    stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                }
+                else
+                {
+                    stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                }
             }
             else
+                stream << ";";
+
+            // stream << "//"; // for debugging
+            if (ret.size() == 0)
+                stream << "POPCALL()";
+            else
+                stream << "POPCALL(0, " << ret << "," << oRet << ")";
+        } // end of call
+        else if(auto abs = funcStrategy->hasAbstractedFunction(call->getDirectCallee()->getNameAsString()))
+        {
+            stream << print(site);
+            if (isa<DeclStmt>(site))
             {
-                stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                auto ds = (const DeclStmt *)site;
+                auto vd = (const VarDecl *)ds->getSingleDecl();
+                std::string varName = vd->getNameAsString();
+                std::string sVarName = varUse.getSValName(vd);
+                
+                if (varUse.isShared(vd))
+                {
+                    stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                }
+                else
+                {
+                    stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                }
+            }
+            else stream << ";";
+
+            if (ret.size() == 0) {}
+            else
+            {
+                stream << ret << " = " << abs << "(";
+                for(int i=0, size = call->getNumArgs(); i<size; i++)
+                {
+                    stream << print(call->getArg(i), &helper);
+                    if(i!=0) stream <<", ";
+                }
+                stream <<")";
             }
         }
         else
-            stream << ";";
+        { // use original function here, we use the original result for now
+            stream << print(site);
+            if (isa<DeclStmt>(site))
+            {
+                auto ds = (const DeclStmt *)site;
+                auto vd = (const VarDecl *)ds->getSingleDecl();
+                std::string varName = vd->getNameAsString();
+                std::string sVarName = varUse.getSValName(vd);
+                // decl shadow
+                // stream << "//";
+                if (varUse.isShared(vd))
+                {
+                    stream << "S_SVAL " << sVarName << " = DEF(" << varName << ");\n"; // map a parameter to real\n";
+                }
+                else
+                {
+                    stream << "L_SVAL " << sVarName << " = 0;\n"; // map a parameter to real\n";
+                }
+                // stream << "//"; // for debugging
+            }
+            else
+                stream << ";";
 
-        // stream << "//"; // for debugging
-        if (ret.size() == 0)
-            stream << "POPCALL()";
-        else
-            stream << "POPCALL(0, " << ret << ")";
+            if (ret.size() == 0) {}
+            else
+                stream << ret << " = " << oRet;
+        }
+
         stream.flush();
         Replacement App = ReplacementBuilder::create(*manager, site, repCode);
         addReplacement(App);
@@ -1422,9 +1495,14 @@ protected:
     void doTranslateCall(const Stmt *site, const CallExpr *call, const Expr *ret, RealVarPrinterHelper &helper)
     {
         std::string retName = "";
+        std::string oRetName = "";
         if (ret != NULL)
+        {
             retName = print(ret, &helper);
-        doTranslateCall(site, call, retName, helper);
+            oRetName = print(ret);
+
+        }
+        doTranslateCall(site, call, retName, oRetName, helper);
     }
 
     void doTranslateRealStatements(RealVarPrinterHelper &helper)
@@ -1466,11 +1544,50 @@ protected:
     }
 };
 
+
+class FunctionInfoCollector : public MatchFinder::MatchCallback
+{
+protected:
+    const std::set<std::string> *targets;
+public:
+    FunctionInfoCollector(FunctionTranslationStrategy * strategy) : strategy(strategy), targets(NULL) {}
+    FunctionTranslationStrategy * strategy;
+    
+
+    void setTargets(const std::set<std::string> *t)
+    {
+        targets = t;
+    }
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+        const FunctionDecl* decl = Result.Nodes.getNodeAs<FunctionDecl>("decl");
+        SourceLocation loc = Result.SourceManager->getFileLoc(decl->getBeginLoc());
+        auto filename = Result.SourceManager->getFilename(loc).str();
+        if(targets->count(filename)!=0)
+        {
+            strategy->translatedFunctions.insert(loc);
+        }
+    }
+
+};
+
+
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool, "Instrumentation: FpArith");
+    CommonOptionsParser Options(argc, argv, ScDebugTool);
+    FunctionTranslationStrategy funcStrategy;
+
+    CodeAnalysisTool funcCollector(Options);
+    FunctionInfoCollector collector(&funcStrategy);
+    funcCollector.add(fpFunc.bind("decl"), collector);
+    funcCollector.run();
+
+
+    CodeTransformationTool tool(Options, "Instrumentation: FpArith");
 
     FpArithInstrumentation handler(tool.GetReplacements());
+
+    handler.setFunctionStrategy(&funcStrategy);
 
     // var use
     tool.add(fpVarDeclInFunc, handler);

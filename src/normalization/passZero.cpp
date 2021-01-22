@@ -55,7 +55,7 @@ public:
         Manager = Result.SourceManager;
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
 
-        if(stmt!=NULL) {
+        if(stmt!=NULL && isInTargets(stmt, Result.SourceManager)) {
             if(isa<WhileStmt>(stmt)) {
                 WhileStmt* ws = (WhileStmt*)stmt;
                 if(ws->getConditionVariableDeclStmt()!=NULL) {
@@ -72,7 +72,7 @@ public:
             }
         } else {
             const DeclStmt* decl = Result.Nodes.getNodeAs<DeclStmt>("multiple");
-            if(decl!=NULL) {
+            if(decl!=NULL && isInTargets(decl, Result.SourceManager)) {
                 flattenVector.insert(decl);
                 addAsNonOverlappedStmt(decl, Result.SourceManager);
             }
@@ -136,7 +136,8 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ToolingSampleCategory, "Pass Zero: turn empty and hanging statements");
+    CommonOptionsParser Options(argc, argv, ToolingSampleCategory);
+    CodeTransformationTool tool(Options, "Pass Zero: turn empty and hanging statements");
     tool.add<decltype(target), SingleStmtPatHandler>(target);
 
     tool.run();

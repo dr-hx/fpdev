@@ -116,7 +116,8 @@ public:
             type = actual->getType();
         else
             type = formal->getType();
-        // actual->dumpColor();
+        
+        if(!isInTargets(actual, Result.SourceManager)) return;
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
         addAsNonOverlappedStmt(actual, extractions.back().actualExpressionRange);
     }
@@ -136,7 +137,8 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass Two: normalize call to floating point functions");
+    CommonOptionsParser Options(argc, argv, ScDebugTool);
+    CodeTransformationTool tool(Options, "Pass Two: normalize call to floating point functions");
 
     ParamPatHandler handler(tool.GetReplacements());
 

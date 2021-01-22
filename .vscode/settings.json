@@ -74,6 +74,8 @@
         "utility": "cpp",
         "vector": "cpp",
         "*.def": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "__cxx_version": "cpp",
+        "version": "cpp"
     }
 }

@@ -96,6 +96,7 @@ public:
     {
         const Expr *actual = Result.Nodes.getNodeAs<Expr>("change");
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
+        if(!isInTargets(stmt, Result.SourceManager)) return;
         QualType type = actual->getType();
         extractions.push_back(ExpressionExtractionRequest(actual, type, stmt, Result.SourceManager));
         addAsNonOverlappedStmt(actual, extractions.back().actualExpressionRange);
@@ -104,7 +105,8 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass Tree: normalize assignments and increments");
+    CommonOptionsParser Options(argc, argv, ScDebugTool);
+    CodeTransformationTool tool(Options, "Pass Tree: normalize assignments and increments");
 
     AssignPatHandler handler(tool.GetReplacements());
 

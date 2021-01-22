@@ -1,9 +1,14 @@
 // #define __APPLE__ 1
 // #include <dispatch/dispatch.h>
 #include <stdlib.h>
+#include <math.h>
 // #include <stdio.h>
 
 #define HELLO d + x
+
+double func(int x) {
+    return j0(x);
+}
 
 static double s_x;
 int main(int argc, char const *argv[])
@@ -17,6 +22,8 @@ int main(int argc, char const *argv[])
     double *pt = (double*) malloc(sizeof(double)*5);
     arr[0] = arr[1] / arr[2] + y;
 
+    arr[3] = func(5);
+    
     delete pt;
 
 return 0;

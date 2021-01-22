@@ -16,12 +16,12 @@ LIB_PATHS = -L/usr/local/opt/llvm/lib
 # COMPILER_FLAGS = -std=c++17
 # LIBS = -lstdc++ -lm -lgmp -lmpfr ${CLANG_LIBS}
 
-CXXFLAGS := -std=c++17 -fno-rtti -O0 -g
+CXXFLAGS := -std=c++17 -fno-rtti -Wunused-value -O0 -g
 LLVM_BIN_PATH := /usr/local/opt/llvm/bin
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
 LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
-EXTRA_FLAGS := -- -Isrc/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -std=c++17
+EXTRA_FLAGS := -- -Wunused-value -Isrc/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -std=c++17
 
 CLANG_LIBS := \
 	-lclangAST \

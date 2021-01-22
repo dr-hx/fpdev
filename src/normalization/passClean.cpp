@@ -22,7 +22,7 @@ public:
         const SourceManager *Manager = Result.SourceManager;
         const NullStmt *nullStmt = Result.Nodes.getNodeAs<NullStmt>("null");
 
-        if(nullStmt!=NULL) {
+        if(nullStmt!=NULL && isInTargets(nullStmt, Result.SourceManager)) {
             Replacement Rep = ReplacementBuilder::create(*Manager, nullStmt, "");
             Replacements &Replace = ReplaceMap[Rep.getFilePath().str()];
             llvm::Error err = Replace.add(Rep);
@@ -32,7 +32,8 @@ public:
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ToolingSampleCategory, "Pass Clean: remove empty statements");
+    CommonOptionsParser Options(argc, argv, ToolingSampleCategory);
+    CodeTransformationTool tool(Options, "Pass Clean: remove empty statements");
     tool.add<decltype(target), CleanStmtPatHandler>(target);
     tool.run();
     return 0;

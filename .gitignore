@@ -1,3 +1,9 @@
 bin
 a.out
 test/derived
+src/qd/autom4te.cache
+src/qd/docs
+src/qd/fortran
+src/qd/tests
+src/qd/src/.deps
+src/qd/src/.libs

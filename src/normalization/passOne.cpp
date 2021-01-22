@@ -48,6 +48,8 @@ public:
         if (cvs == NULL && lis == NULL)
             return;
 
+        if(!isInTargets(stmt, Result.SourceManager)) return;
+
         std::ostringstream out;
         if (lis != NULL)
         {
@@ -95,6 +97,7 @@ public:
 
         if (decl == NULL && init == NULL && cond==NULL && inc==NULL)
             return;
+        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream prefixOut;
 
@@ -163,6 +166,7 @@ public:
 
         if (decl == NULL && cond==NULL)
             return;
+        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream prefixOut;
 
@@ -205,6 +209,7 @@ public:
     {
         const DoStmt *stmt = Result.Nodes.getNodeAs<DoStmt>("parent");
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
+        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream bodyOut;
 
@@ -231,7 +236,8 @@ auto MultiDeclPat_DeclInBlock = declStmt(allOf(unless(hasSingleDecl(anything()))
 
 int main(int argc, const char **argv)
 {
-    CodeTransformationTool tool(argc, argv, ScDebugTool, "Pass One: normalize control structures");
+    CommonOptionsParser Options(argc, argv, ScDebugTool);
+    CodeTransformationTool tool(Options, "Pass One: normalize control structures");
     tool.add<decltype(IfStmtPat), IfStmtPatHandler>(IfStmtPat);
     // tool.add<decltype(SwitchStmtPat), IfStmtPatHandler>(SwitchStmtPat);
     tool.add<decltype(ForStmtPat), ForStmtPatHandler>(ForStmtPat);
