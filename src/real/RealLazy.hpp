@@ -28,11 +28,11 @@ namespace real
         template <typename E>
         struct ExpressionEvaluator
         {
-            inline static void eval(const real::sval_ptr acc, const E &exp)
+            INLINE_FLAGS static void eval(const real::sval_ptr acc, const E &exp)
             {
                 assert(false);
             }
-            inline static const real::sval_ptr eval(const E &exp)
+            INLINE_FLAGS static const real::sval_ptr eval(const E &exp)
             {
                 assert(false);
                 return nullptr;
@@ -83,11 +83,11 @@ namespace real
         template <typename Derived>
         struct RealBase
         {
-            inline const Derived &derived() const { return *static_cast<const Derived *>(this); }
+            INLINE_FLAGS const Derived &derived() const { return *static_cast<const Derived *>(this); }
 
             // FMA1
             template <typename DerivedR>
-            inline friend std::enable_if_t<trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase,
+            INLINE_FLAGS friend std::enable_if_t<trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase,
                                            TernaryOperator<Operator::FMA, typename trails<RealBase<Derived>>::LType, typename trails<RealBase<Derived>>::RType, RealBase<DerivedR>>>
             operator+(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
             {
@@ -97,7 +97,7 @@ namespace real
 
             // FMA2
             template <typename DerivedR>
-            inline friend std::enable_if_t<
+            INLINE_FLAGS friend std::enable_if_t<
                 !(trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase) && (trails<RealBase<DerivedR>>::opCode == Operator::MUL && trails<typename trails<RealBase<DerivedR>>::LType>::isRealBase && trails<typename trails<RealBase<DerivedR>>::RType>::isRealBase),
                 TernaryOperator<Operator::FMA, typename trails<RealBase<DerivedR>>::LType, typename trails<RealBase<DerivedR>>::RType, RealBase<Derived>>>
             operator+(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
@@ -107,7 +107,7 @@ namespace real
             }
 
             template <typename DerivedR>
-            inline friend std::enable_if_t<
+            INLINE_FLAGS friend std::enable_if_t<
                 !(trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase) && !(trails<RealBase<DerivedR>>::opCode == Operator::MUL && trails<typename trails<RealBase<DerivedR>>::LType>::isRealBase && trails<typename trails<RealBase<DerivedR>>::RType>::isRealBase),
                 BinaryOperator<Operator::ADD, RealBase<Derived>, RealBase<DerivedR>>>
             operator+(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
@@ -117,7 +117,7 @@ namespace real
 
             // FMS1
             template <typename DerivedR>
-            inline friend std::enable_if_t<trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase,
+            INLINE_FLAGS friend std::enable_if_t<trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase,
                                            TernaryOperator<Operator::FMS, typename trails<RealBase<Derived>>::LType, typename trails<RealBase<Derived>>::RType, RealBase<DerivedR>>>
             operator-(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
             {
@@ -127,7 +127,7 @@ namespace real
 
             // FMS2
             template <typename DerivedR>
-            inline friend std::enable_if_t<
+            INLINE_FLAGS friend std::enable_if_t<
                 !(trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase) && (trails<RealBase<DerivedR>>::opCode == Operator::MUL && trails<typename trails<RealBase<DerivedR>>::LType>::isRealBase && trails<typename trails<RealBase<DerivedR>>::RType>::isRealBase),
                 TernaryOperator<Operator::FMS, typename trails<RealBase<DerivedR>>::LType, typename trails<RealBase<DerivedR>>::RType, RealBase<Derived>>>
             operator-(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
@@ -137,7 +137,7 @@ namespace real
             }
 
             template <typename DerivedR>
-            inline friend std::enable_if_t<
+            INLINE_FLAGS friend std::enable_if_t<
                 !(trails<RealBase<Derived>>::opCode == Operator::MUL && trails<typename trails<RealBase<Derived>>::LType>::isRealBase && trails<typename trails<RealBase<Derived>>::RType>::isRealBase) && !(trails<RealBase<DerivedR>>::opCode == Operator::MUL && trails<typename trails<RealBase<DerivedR>>::LType>::isRealBase && trails<typename trails<RealBase<DerivedR>>::RType>::isRealBase),
                 BinaryOperator<Operator::SUB, RealBase<Derived>, RealBase<DerivedR>>>
             operator-(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
@@ -146,52 +146,52 @@ namespace real
             }
 
             template <typename DerivedR>
-            inline friend BinaryOperator<Operator::MUL, RealBase<Derived>, RealBase<DerivedR>> operator*(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::MUL, RealBase<Derived>, RealBase<DerivedR>> operator*(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
             {
                 return BinaryOperator<Operator::MUL, RealBase<Derived>, RealBase<DerivedR>>(l, r);
             }
 
             template <typename DerivedR>
-            inline friend BinaryOperator<Operator::DIV, RealBase<Derived>, RealBase<DerivedR>> operator/(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::DIV, RealBase<Derived>, RealBase<DerivedR>> operator/(const RealBase<Derived> &l, const RealBase<DerivedR> &r)
             {
                 return BinaryOperator<Operator::DIV, RealBase<Derived>, RealBase<DerivedR>>(l, r);
             }
 
-            inline friend BinaryOperator<Operator::ADD, RealBase<Derived>, double> operator+(const RealBase<Derived> &l, const double &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::ADD, RealBase<Derived>, double> operator+(const RealBase<Derived> &l, const double &r)
             {
                 return BinaryOperator<Operator::ADD, RealBase<Derived>, double>(l, r);
             }
-            inline friend BinaryOperator<Operator::ADD, RealBase<Derived>, double> operator+(const double &r, const RealBase<Derived> &l)
+            INLINE_FLAGS friend BinaryOperator<Operator::ADD, RealBase<Derived>, double> operator+(const double &r, const RealBase<Derived> &l)
             {
                 return BinaryOperator<Operator::ADD, RealBase<Derived>, double>(l, r);
             }
 
-            inline friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator-(const RealBase<Derived> &l, const double &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator-(const RealBase<Derived> &l, const double &r)
             {
                 return BinaryOperator<Operator::SUB, RealBase<Derived>, double>(l, r);
             }
 
-            inline friend BinaryOperator<Operator::MUL, double, RealBase<Derived>> operator-(const double &r, const RealBase<Derived> &l)
+            INLINE_FLAGS friend BinaryOperator<Operator::MUL, double, RealBase<Derived>> operator-(const double &r, const RealBase<Derived> &l)
             {
                 return BinaryOperator<Operator::SUB, double, RealBase<Derived>>(r, l);
             }
 
-            inline friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator*(const double &r, const RealBase<Derived> &l)
+            INLINE_FLAGS friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator*(const double &r, const RealBase<Derived> &l)
             {
                 return BinaryOperator<Operator::MUL, RealBase<Derived>, double>(l, r);
             }
 
-            inline friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator*(const RealBase<Derived> &l, const double &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::MUL, RealBase<Derived>, double> operator*(const RealBase<Derived> &l, const double &r)
             {
                 return BinaryOperator<Operator::MUL, RealBase<Derived>, double>(l, r);
             }
 
-            inline friend BinaryOperator<Operator::DIV, double, RealBase<Derived>> operator/(const double &r, const RealBase<Derived> &l)
+            INLINE_FLAGS friend BinaryOperator<Operator::DIV, double, RealBase<Derived>> operator/(const double &r, const RealBase<Derived> &l)
             {
                 return BinaryOperator<Operator::DIV, double, RealBase<Derived>>(r, l);
             }
 
-            inline friend BinaryOperator<Operator::DIV, RealBase<Derived>, double> operator/(const RealBase<Derived> &l, const double &r)
+            INLINE_FLAGS friend BinaryOperator<Operator::DIV, RealBase<Derived>, double> operator/(const RealBase<Derived> &l, const double &r)
             {
                 return BinaryOperator<Operator::DIV, RealBase<Derived>, double>(l, r);
             }
@@ -263,41 +263,41 @@ namespace real
             }
 
             template <typename Derived>
-            inline Real &operator=(const RealBase<Derived> &r)
+            INLINE_FLAGS Real &operator=(const RealBase<Derived> &r)
             {
                 ExpressionEvaluator<RealBase<Derived>>::eval(this->shadow, r);
                 return *this;
             }
 
             template <typename Derived>
-            inline Real &operator+=(const RealBase<Derived> &r)
+            INLINE_FLAGS Real &operator+=(const RealBase<Derived> &r)
             {
                 *this = *this + r;
                 return *this;
             }
 
             template <typename Derived>
-            inline Real &operator-=(const RealBase<Derived> &r)
+            INLINE_FLAGS Real &operator-=(const RealBase<Derived> &r)
             {
                 *this = *this - r;
                 return *this;
             }
 
             template <typename Derived>
-            inline Real &operator*=(const RealBase<Derived> &r)
+            INLINE_FLAGS Real &operator*=(const RealBase<Derived> &r)
             {
                 *this = *this * r;
                 return *this;
             }
 
             template <typename Derived>
-            inline Real &operator/=(const RealBase<Derived> &r)
+            INLINE_FLAGS Real &operator/=(const RealBase<Derived> &r)
             {
                 *this = *this / r;
                 return *this;
             }
 
-            inline Real &operator=(const double &r)
+            INLINE_FLAGS Real &operator=(const double &r)
             {
                 ASSIGN_D(this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -306,7 +306,7 @@ namespace real
                 return *this;
             }
 
-            inline Real &operator+=(const double &r)
+            INLINE_FLAGS Real &operator+=(const double &r)
             {
                 ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -314,7 +314,7 @@ namespace real
 #endif
                 return *this;
             }
-            inline Real &operator-=(const double &r)
+            INLINE_FLAGS Real &operator-=(const double &r)
             {
                 SUB_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -322,7 +322,7 @@ namespace real
 #endif
                 return *this;
             }
-            inline Real &operator*=(const double &r)
+            INLINE_FLAGS Real &operator*=(const double &r)
             {
                 MUL_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -330,7 +330,7 @@ namespace real
 #endif
                 return *this;
             }
-            inline Real &operator/=(const double &r)
+            INLINE_FLAGS Real &operator/=(const double &r)
             {
                 DIV_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -362,12 +362,12 @@ namespace real
         template <>
         struct ExpressionEvaluator<RealBase<Real>>
         {
-            inline static void eval(const real::sval_ptr acc, const RealBase<Real> &v)
+            INLINE_FLAGS static void eval(const real::sval_ptr acc, const RealBase<Real> &v)
             {
                 ASSIGN(acc->shadowValue, v.derived().shadow->shadowValue);
             }
 
-            inline static const real::sval_ptr eval(const RealBase<Real> &r)
+            INLINE_FLAGS static const real::sval_ptr eval(const RealBase<Real> &r)
             {
                 return nullptr; // should not use
             }
@@ -376,7 +376,7 @@ namespace real
         template <Operator opCode, typename L, typename R>
         struct ExpressionEvaluator<RealBase<BinaryOperator<opCode, L, R>>>
         {
-            inline static const real::sval_ptr eval(const RealBase<BinaryOperator<opCode, L, R>> &r)
+            INLINE_FLAGS static const real::sval_ptr eval(const RealBase<BinaryOperator<opCode, L, R>> &r)
             {
                 sval_ptr tmp = ShadowPool::INSTANCE.get();
                 ExpressionEvaluator<RealBase<BinaryOperator<opCode, L, R>>>::eval(tmp, r);
@@ -387,7 +387,7 @@ namespace real
              * For addition, there are six cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -402,7 +402,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -416,7 +416,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -441,7 +441,7 @@ namespace real
                 }
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -454,7 +454,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -480,7 +480,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::ADD && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -498,7 +498,7 @@ namespace real
              * For multiplication, there are six cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -513,7 +513,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -527,7 +527,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -552,7 +552,7 @@ namespace real
                 }
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -565,7 +565,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -591,7 +591,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::MUL && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -609,7 +609,7 @@ namespace real
              * For substraction, there are eight cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -624,7 +624,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -637,7 +637,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase == false && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -651,7 +651,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -676,7 +676,7 @@ namespace real
                 }
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -688,7 +688,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase == false && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -701,7 +701,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -727,7 +727,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::SUB && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -745,7 +745,7 @@ namespace real
              * For division, there are eight cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -760,7 +760,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -773,7 +773,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase == false && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -787,7 +787,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -812,7 +812,7 @@ namespace real
                 }
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase == false, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -824,7 +824,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase == false && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -837,7 +837,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -863,7 +863,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<BinaryOperator<opCode, L, R>>>::value && opCode == Operator::DIV && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP, void>
             eval(const real::sval_ptr acc, const EXP &exp)
             {
@@ -881,7 +881,7 @@ namespace real
         template <Operator opCode, typename L, typename M, typename R>
         struct ExpressionEvaluator<RealBase<TernaryOperator<opCode, L, M, R>>>
         {
-            inline static const real::sval_ptr eval(const RealBase<TernaryOperator<opCode, L, M, R>> &r)
+            INLINE_FLAGS static const real::sval_ptr eval(const RealBase<TernaryOperator<opCode, L, M, R>> &r)
             {
                 sval_ptr tmp = ShadowPool::INSTANCE.get();
                 ExpressionEvaluator<RealBase<TernaryOperator<opCode, L, M, R>>>::eval(tmp, r);
@@ -892,7 +892,7 @@ namespace real
              * For FMA, there are eight cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -909,7 +909,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -926,7 +926,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -944,7 +944,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpM);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -961,7 +961,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpR);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -978,7 +978,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -995,7 +995,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1013,7 +1013,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMA && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1034,7 +1034,7 @@ namespace real
              * For FMS, there are eight cases 
              */
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1051,7 +1051,7 @@ namespace real
 #endif
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1069,7 +1069,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1087,7 +1087,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpM);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1105,7 +1105,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpR);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode == Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1122,7 +1122,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode == Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1139,7 +1139,7 @@ namespace real
                 ShadowPool::INSTANCE.put(tmpL);
             }
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode == Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1157,7 +1157,7 @@ namespace real
             }
 
             template <typename EXP>
-            inline static std::enable_if_t<
+            INLINE_FLAGS static std::enable_if_t<
                 std::is_same<EXP, RealBase<TernaryOperator<opCode, L, M, R>>>::value && opCode == Operator::FMS && trails<L>::isRealBase && trails<L>::opCode != Operator::NOP && trails<M>::isRealBase && trails<M>::opCode != Operator::NOP && trails<R>::isRealBase && trails<R>::opCode != Operator::NOP,
                 void>
             eval(const real::sval_ptr acc, const EXP &exp)
@@ -1192,7 +1192,7 @@ namespace real
         template <int count, int size = count>
         struct InitLoop
         {
-            inline static void run(Real (&arguments)[size])
+            INLINE_FLAGS static void run(Real (&arguments)[size])
             {
                 arguments[count - 1].makeFormal();
                 InitLoop<count - 1, size>::run(arguments);
@@ -1201,7 +1201,7 @@ namespace real
         template <int size>
         struct InitLoop<0, size>
         {
-            inline static void run(Real (&arguments)[size]) {}
+            INLINE_FLAGS static void run(Real (&arguments)[size]) {}
         };
 
         template <typename BuilderType,
@@ -1219,7 +1219,7 @@ namespace real
             }
 
             template <int start = 0, typename... Args>
-            inline const T &operator()(const Real &first, const Args &... rest)
+            INLINE_FLAGS const T &operator()(const Real &first, const Args &... rest)
             {
                 static_assert(start < argSize);
                 substitute(arguments[start], first);
@@ -1227,14 +1227,14 @@ namespace real
             }
 
             template <int start = 0>
-            inline const T &operator()()
+            INLINE_FLAGS const T &operator()()
             {
                 static_assert(start == argSize);
                 return expression;
             }
 
         private:
-            inline void substitute(Real &formal, const Real &actual)
+            INLINE_FLAGS void substitute(Real &formal, const Real &actual)
             {
                 formal.shadow = actual.shadow;
             }

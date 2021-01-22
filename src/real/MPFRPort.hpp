@@ -40,5 +40,4 @@
 #define FMA(t, l, m, r) mpfr_fma(t, l, m, r, RND)
 #define FMS(t, l, m, r) mpfr_fms(t, l, m, r, RND)
 
-
 #endif

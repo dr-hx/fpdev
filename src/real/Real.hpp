@@ -74,7 +74,7 @@ namespace real
             }
         }
 
-        inline friend Real &&operator+(const Real &l, const Real &r)
+        INLINE_FLAGS friend Real &&operator+(const Real &l, const Real &r)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
@@ -84,7 +84,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator+(Real &&l, const Real &r)
+        INLINE_FLAGS friend Real &&operator+(Real &&l, const Real &r)
         {
             ADD_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -93,7 +93,7 @@ namespace real
             return std::move(l);
         }
 
-        inline friend Real &&operator+(const Real &l, Real &&r)
+        INLINE_FLAGS friend Real &&operator+(const Real &l, Real &&r)
         {
             ADD_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -102,7 +102,7 @@ namespace real
             return std::move(r);
         }
 
-        inline friend Real &&operator+(Real &&l, Real &&r)
+        INLINE_FLAGS friend Real &&operator+(Real &&l, Real &&r)
         {
             ADD_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -112,7 +112,7 @@ namespace real
             return std::move(l);
         }
 
-        inline friend Real &&operator-(const Real &l, const Real &r)
+        INLINE_FLAGS friend Real &&operator-(const Real &l, const Real &r)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
@@ -122,7 +122,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator-(Real &&l, const Real &r)
+        INLINE_FLAGS friend Real &&operator-(Real &&l, const Real &r)
         {
             SUB_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -130,7 +130,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator-(Real &&l, Real &&r)
+        INLINE_FLAGS friend Real &&operator-(Real &&l, Real &&r)
         {
             SUB_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -139,7 +139,7 @@ namespace real
             RealPool<Real>::INSTANCE.put(&r);
             return std::move(l);
         }
-        inline friend Real &&operator-(const Real &l, Real &&r)
+        INLINE_FLAGS friend Real &&operator-(const Real &l, Real &&r)
         {
             SUB_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -147,7 +147,7 @@ namespace real
 #endif
             return std::move(r);
         }
-        inline friend Real &&operator*(const Real &l, const Real &r)
+        INLINE_FLAGS friend Real &&operator*(const Real &l, const Real &r)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
@@ -157,7 +157,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator*(Real &&l, const Real &r)
+        INLINE_FLAGS friend Real &&operator*(Real &&l, const Real &r)
         {
             MUL_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -166,7 +166,7 @@ namespace real
             return std::move(l);
         }
 
-        inline friend Real &&operator*(const Real &l, Real &&r)
+        INLINE_FLAGS friend Real &&operator*(const Real &l, Real &&r)
         {
             MUL_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -175,7 +175,7 @@ namespace real
             return std::move(r);
         }
 
-        inline friend Real &&operator*(Real &&l, Real &&r)
+        INLINE_FLAGS friend Real &&operator*(Real &&l, Real &&r)
         {
             MUL_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -185,7 +185,7 @@ namespace real
             return std::move(l);
         }
 
-        inline friend Real &&operator/(const Real &l, const Real &r)
+        INLINE_FLAGS friend Real &&operator/(const Real &l, const Real &r)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
@@ -195,7 +195,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator/(Real &&l, const Real &r)
+        INLINE_FLAGS friend Real &&operator/(Real &&l, const Real &r)
         {
             DIV_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -203,7 +203,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator/(Real &&l, Real &&r)
+        INLINE_FLAGS friend Real &&operator/(Real &&l, Real &&r)
         {
             DIV_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -212,7 +212,7 @@ namespace real
             RealPool<Real>::INSTANCE.put(&r);
             return std::move(l);
         }
-        inline friend Real &&operator/(const Real &l, Real &&r)
+        INLINE_FLAGS friend Real &&operator/(const Real &l, Real &&r)
         {
             DIV_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -221,7 +221,7 @@ namespace real
             return std::move(r);
         }
 
-        inline friend Real &&operator+(Real &&l, const double i)
+        INLINE_FLAGS friend Real &&operator+(Real &&l, const double i)
         {
             ADD_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -229,7 +229,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator+(const Real &l, const double i)
+        INLINE_FLAGS friend Real &&operator+(const Real &l, const double i)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -238,7 +238,7 @@ namespace real
 #endif
             return std::move(res);
         }
-        inline friend Real &&operator+(const double i, Real &&l)
+        INLINE_FLAGS friend Real &&operator+(const double i, Real &&l)
         {
             ADD_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -246,7 +246,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator+(const double i, const Real &l)
+        INLINE_FLAGS friend Real &&operator+(const double i, const Real &l)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -256,7 +256,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator-(Real &&l, const double i)
+        INLINE_FLAGS friend Real &&operator-(Real &&l, const double i)
         {
             SUB_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -264,7 +264,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator-(const Real &l, const double i)
+        INLINE_FLAGS friend Real &&operator-(const Real &l, const double i)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -273,7 +273,7 @@ namespace real
 #endif
             return std::move(res);
         }
-        inline friend Real &&operator-(const double i, Real &&l)
+        INLINE_FLAGS friend Real &&operator-(const double i, Real &&l)
         {
             SUB_DR(l.shadow->shadowValue, i, l.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -281,7 +281,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator-(const double i, const Real &l)
+        INLINE_FLAGS friend Real &&operator-(const double i, const Real &l)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_DR(res.shadow->shadowValue, i, l.shadow->shadowValue);
@@ -291,7 +291,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator*(Real &&l, const double i)
+        INLINE_FLAGS friend Real &&operator*(Real &&l, const double i)
         {
             MUL_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -299,7 +299,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator*(const Real &l, const double i)
+        INLINE_FLAGS friend Real &&operator*(const Real &l, const double i)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -308,7 +308,7 @@ namespace real
 #endif
             return std::move(res);
         }
-        inline friend Real &&operator*(const double i, Real &&l)
+        INLINE_FLAGS friend Real &&operator*(const double i, Real &&l)
         {
             MUL_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -316,7 +316,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator*(const double i, const Real &l)
+        INLINE_FLAGS friend Real &&operator*(const double i, const Real &l)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -326,7 +326,7 @@ namespace real
             return std::move(res);
         }
 
-        inline friend Real &&operator/(Real &&l, const double i)
+        INLINE_FLAGS friend Real &&operator/(Real &&l, const double i)
         {
             DIV_RD(l.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -334,7 +334,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator/(const Real &l, const double i)
+        INLINE_FLAGS friend Real &&operator/(const Real &l, const double i)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
@@ -343,7 +343,7 @@ namespace real
 #endif
             return std::move(res);
         }
-        inline friend Real &&operator/(const double i, Real &&l)
+        INLINE_FLAGS friend Real &&operator/(const double i, Real &&l)
         {
             DIV_DR(l.shadow->shadowValue, i, l.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -351,7 +351,7 @@ namespace real
 #endif
             return std::move(l);
         }
-        inline friend Real &&operator/(const double i, const Real &l)
+        INLINE_FLAGS friend Real &&operator/(const double i, const Real &l)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_DR(res.shadow->shadowValue, i, l.shadow->shadowValue);
@@ -361,7 +361,7 @@ namespace real
             return std::move(res);
         }
 
-        inline Real &operator=(const Real &r)
+        INLINE_FLAGS Real &operator=(const Real &r)
         {
             ASSIGN(shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -369,7 +369,7 @@ namespace real
 #endif
             return *this;
         }
-        inline Real &operator=(Real &&r)
+        INLINE_FLAGS Real &operator=(Real &&r)
         {
             SWAP(shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -378,7 +378,7 @@ namespace real
             RealPool<Real>::INSTANCE.put(&r);
             return *this;
         }
-        inline Real &operator=(const double r)
+        INLINE_FLAGS Real &operator=(const double r)
         {
             ASSIGN_D(shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -387,7 +387,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator+=(const Real &r)
+        INLINE_FLAGS Real &operator+=(const Real &r)
         {
             ADD_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -396,7 +396,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator-=(const Real &r)
+        INLINE_FLAGS Real &operator-=(const Real &r)
         {
             SUB_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -405,7 +405,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator*=(const Real &r)
+        INLINE_FLAGS Real &operator*=(const Real &r)
         {
             MUL_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -414,7 +414,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator/=(const Real &r)
+        INLINE_FLAGS Real &operator/=(const Real &r)
         {
             DIV_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -423,7 +423,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator+=(const double &r)
+        INLINE_FLAGS Real &operator+=(const double &r)
         {
             ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -432,7 +432,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator-=(const double &r)
+        INLINE_FLAGS Real &operator-=(const double &r)
         {
             SUB_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -441,7 +441,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator*=(const double &r)
+        INLINE_FLAGS Real &operator*=(const double &r)
         {
             MUL_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
@@ -450,7 +450,7 @@ namespace real
             return *this;
         }
 
-        inline Real &operator/=(const double &r)
+        INLINE_FLAGS Real &operator/=(const double &r)
         {
             DIV_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL

@@ -66,7 +66,17 @@ private:
   std::map<std::string, Replacements> &ReplaceMap;
 };
 
+void test()
+{
+  static int sum  = 0;
+  sum ++;
+  std::cout << sum << std::endl;
+}
+
 int main(int argc, const char **argv) {
+  test();
+  test();
+  
   dd_real a,b;
   a = 1.2;
   b = 1.1;

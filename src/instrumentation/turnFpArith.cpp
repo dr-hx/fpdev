@@ -433,7 +433,7 @@ struct Scope : public ScopeItem
             if (isRoot())
             {
                 decl->decl->print(llvm::outs());
-                llvm::outs() << "\n";
+                llvm::outs() << " is intended to be added to root! ignored!\n";
                 return true;
             }
             varDecls.push_back(decl);
@@ -921,7 +921,6 @@ public:
 
             if (def != NULL && isInTargets(def, Result.SourceManager))
             {
-                llvm::outs() << def->getNameAsString() << "\n";
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
                 varDefs.insert(def, site, init);
@@ -1088,7 +1087,6 @@ public:
     virtual void onEndOfTranslationUnit()
     {
         // std::set<const VarDecl*> staticReal;
-        llvm::outs() <<"in end of file\n";
         if (manager != NULL)
         {
             RealVarPrinterHelper helper(varUse, lFpVals);
@@ -1210,7 +1208,7 @@ protected:
                             {
                                 const ParmVarDecl *parm = (const ParmVarDecl *)v->varDef;
                                 int idx = parm->getFunctionScopeIndex();
-                                stream << sVarName << "= LOADPARM(" << idx << "," << varName << ");\n";
+                                stream << "LOADPARM(" << idx << "," << sVarName << "," << varName << ");\n";
                             }
                             else
                             {
@@ -1327,7 +1325,7 @@ protected:
                             // note that if it returns a structure/class, we must generate multiple PUSHRET statements
                             // it is safe to push this real on the stack
                             std::string retName = var->getNameAsString();
-                            stream << "PUSHRET(0," << retName << ");\n"; // use std::move here\n";
+                            stream << "PUSHRET(0," << varUse.getSValName(var) << ");\n"; // use std::move here\n";
                         }
                         else if (varUse.isSharedInteresting(var))
                         {
@@ -1378,9 +1376,11 @@ protected:
         llvm::raw_string_ostream stream(repCode);
         // stream << "//"; // for debugging
 
-        if(funcStrategy->isTranslated(call->getDirectCallee(), manager))
+        auto callee = call->getDirectCallee();
+
+        if(funcStrategy->isTranslated(callee, manager))
         {
-            stream << "PUSHCALL();\n";
+            stream << "PUSHCALL("<< callee->getNumParams() << ");\n";
             if (callSites.has(call))
             {
                 for (auto callArg : callSites[call].args)
@@ -1423,9 +1423,9 @@ protected:
             if (ret.size() == 0)
                 stream << "POPCALL()";
             else
-                stream << "POPCALL(0, " << ret << "," << oRet << ")";
+                stream << "POPRET(0, " << ret << "," << oRet << ")";
         } // end of call
-        else if(auto abs = funcStrategy->hasAbstractedFunction(call->getDirectCallee()->getNameAsString()))
+        else if(auto abs = funcStrategy->hasAbstractedFunction(callee->getNameAsString()))
         {
             stream << print(site);
             if (isa<DeclStmt>(site))
@@ -1449,7 +1449,7 @@ protected:
             if (ret.size() == 0) {}
             else
             {
-                stream << ret << " = " << abs << "(";
+                stream << ret << " = " << *abs << "(";
                 for(int i=0, size = call->getNumArgs(); i<size; i++)
                 {
                     stream << print(call->getArg(i), &helper);
@@ -1457,6 +1457,10 @@ protected:
                 }
                 stream <<")";
             }
+        }
+        else if(funcStrategy->isPseudoFunction(callee->getNameAsString()))
+        {
+            stream << print(site, &helper) << ";";
         }
         else
         { // use original function here, we use the original result for now
@@ -1484,7 +1488,7 @@ protected:
 
             if (ret.size() == 0) {}
             else
-                stream << ret << " = " << oRet;
+                stream << ret << " = " << oRet <<";";
         }
 
         stream.flush();

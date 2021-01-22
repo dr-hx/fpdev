@@ -1,32 +1,37 @@
 // #define __APPLE__ 1
 // #include <dispatch/dispatch.h>
-#include <stdlib.h>
-#include <math.h>
+#include <stdio.h>
 // #include <stdio.h>
+#include <EAST.h>
 
-#define HELLO d + x
-
-double func(int x) {
-    return j0(x);
+double fabs(double x)
+{
+    if(x>0) return x;
+    else return 0 - x;
 }
 
-static double s_x;
 int main(int argc, char const *argv[])
 {
-    static double s_y;
+    double a = 2.0;
+    double expect_error = 0.000001;
     double x;
-    double &y = x;
+    double actual_error;
+    unsigned iteration_count = 0;
 
-    double arr[10];
+    do
+    {
+        if (a == 0.0)
+            a = 0.1; /* 避免0做分母 */
+        x = a / 2 + 1 / a;
+        actual_error = fabs(2 - x * x);
+        a = x;
 
-    double *pt = (double*) malloc(sizeof(double)*5);
-    arr[0] = arr[1] / arr[2] + y;
+        ++iteration_count;
+        printf("%d\t%.9f\t%.9f\n", iteration_count, a, actual_error);
+        EAST_DUMP(std::cout, a);
+    } while (actual_error >= expect_error);
 
-    arr[3] = func(5);
-    
-    delete pt;
-
-return 0;
+    return 0         ;
 }
 
 // template<int Size>

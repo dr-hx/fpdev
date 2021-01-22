@@ -54,7 +54,6 @@ public:
     {
         Manager = Result.SourceManager;
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-
         if(stmt!=NULL && isInTargets(stmt, Result.SourceManager)) {
             if(isa<WhileStmt>(stmt)) {
                 WhileStmt* ws = (WhileStmt*)stmt;

@@ -21,7 +21,7 @@ LLVM_BIN_PATH := /usr/local/opt/llvm/bin
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
 LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
-EXTRA_FLAGS := -- -Wunused-value -Isrc/real -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -std=c++17
+EXTRA_FLAGS := -- -Wunused-value -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -Isrc/real -Isrc/qd/include  -std=c++17
 
 CLANG_LIBS := \
 	-lclangAST \
@@ -70,7 +70,7 @@ $(passObjects) : bin/% : src/normalization/%.cpp src/transformer/transformer.hpp
 	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 transObjects = $(foreach n, $(trans), bin/$(n))
-$(transObjects) : bin/% : src/instrumentation/%.cpp src/transformer/transformer.hpp
+$(transObjects) : bin/% : src/instrumentation/%.cpp src/transformer/transformer.hpp src/instrumentation/functionTranslation.hpp
 	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
 
@@ -80,6 +80,7 @@ instrumentation : normalization $(transObjects)
 
 testnorm : normalization
 	rm -r ${TEST_DERIVED_BASE}; mkdir ${TEST_DERIVED_BASE}; cp ${TEST_BASE}/${fn} ${TEST_DERIVED_BASE}/${fn}
+	${LLVM_BIN_PATH}/clang-tidy ${TEST_DERIVED_BASE}/${fn} -fix -checks="readability-braces-around-statements" $(EXTRA_FLAGS)
 	for n in $(passObjects); \
 	do \
 		$$n ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\

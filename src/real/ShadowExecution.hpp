@@ -7,6 +7,75 @@ using Addr = void*;
 using SVal = real::Real;
 using VarMap = real::util::VariableMap<Addr, SVal, 0x800>;
 
+// SHADOW FRAMEWORK
+struct ShadowStackFrame
+{
+    SVal **realArgs;
+    SVal *realRet;
+    ShadowStackFrame* prev;
+    ShadowStackFrame(int maxArg=0)
+    {
+        if(maxArg==0) realArgs = NULL;
+        else realArgs = new SVal*[maxArg] {NULL};
+        realRet = NULL;
+        prev = NULL;
+    }
+    ~ShadowStackFrame()
+    {
+        delete[] realArgs;
+    }
+
+    inline ShadowStackFrame* pushCall(int maxArg)
+    {
+        ShadowStackFrame* nf = new ShadowStackFrame(maxArg);
+        nf->prev = this;
+        return nf;
+    }
+    inline void pushArg(int id, SVal& var)
+    {
+        realArgs[id] = &var;
+    }
+    inline void loadParm(int id, SVal& var, double ovar)
+    {
+        if(realArgs[id])
+        {
+            var = *realArgs[id];
+        }
+        else
+        {
+            std::cout<<"use original in loadParm\n";
+            var = ovar;
+        }
+    }
+    inline void pushRet(int id, SVal& var)
+    {
+        realRet = &var;
+    }
+    inline ShadowStackFrame* popCall()
+    {
+        auto t = this->prev;
+        delete this;
+        return t;
+    }
+    inline void popRet(int id, SVal& svar, double ovar)
+    {
+        if(realRet)
+        {
+            svar = *realRet;
+        }
+        else
+        {
+            std::cout<<"use original in popRet\n";
+            svar = ovar;
+        }
+    }
+};
+static ShadowStackFrame rootFrame;
+static ShadowStackFrame* topFrame = &rootFrame;
+
+
+
+// SHADOW LANGUAGE
 
 #define L_SVAL static SVal
 #define S_SVAL SVal&
@@ -48,5 +117,12 @@ void DYNUNDEF(double * res)
     ARRUNDEF(res, size);
     delete res;
 }
+
+#define PUSHCALL(num) topFrame = topFrame->pushCall(num) 
+#define POPCALL() topFrame = topFrame->popCall()
+#define PUSHARG(id, svar) topFrame->pushArg(id, svar)
+#define LOADPARM(id, svar, ovar)  topFrame->loadParm(id, svar, ovar)
+#define PUSHRET(id, svar) topFrame->pushRet(id, svar)
+#define POPRET(id, svar, ovar) topFrame->popRet(id, svar, ovar); topFrame = POPCALL()
 
 #endif

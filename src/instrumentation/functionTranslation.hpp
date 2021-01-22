@@ -11,6 +11,19 @@ struct FunctionTranslationStrategy
     std::set<std::string> originalFunctions;
     std::map<std::string, std::string> abstractedFunctions;
 
+    FunctionTranslationStrategy()
+    {
+        // buildFunctionAbstraction();
+    }
+
+    void buildFunctionAbstraction()
+    {
+        abstractedFunctions.clear();
+        abstractedFunctions["j0"] = "J0";
+        abstractedFunctions["sin"] = "SIN";
+        abstractedFunctions["cos"] = "COS";
+    }
+
     bool isTranslated(const clang::FunctionDecl* Func, const clang::SourceManager *Manager)
     {
         auto loc = Manager->getFileLoc(Func->getBeginLoc());
@@ -21,6 +34,12 @@ struct FunctionTranslationStrategy
     {
         
         return originalFunctions.count(name)!=0;
+    }
+
+    bool isPseudoFunction(const std::string& name)
+    {
+        if(name=="EAST_DUMP") return true;
+        else return false;
     }
 
     const std::string* hasAbstractedFunction(const std::string& name)

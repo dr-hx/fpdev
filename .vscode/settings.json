@@ -76,6 +76,7 @@
         "*.def": "cpp",
         "*.inc": "cpp",
         "__cxx_version": "cpp",
-        "version": "cpp"
+        "version": "cpp",
+        "iomanip": "cpp"
     }
 }
