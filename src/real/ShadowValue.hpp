@@ -1,7 +1,13 @@
 #ifndef SHADOW_VALUE_HPP
 #define SHADOW_VALUE_HPP
+#include "RealConfigure.h"
 
+#if  PORT_TYPE == DD_PORT
+#include "DDPort.hpp"
+#else
 #include "MPFRPort.hpp"
+#endif
+
 #include "RealUtil.hpp"
 
 
@@ -10,7 +16,9 @@ namespace real
 {
     struct ShadowState
     {
+#if KEEP_ORIGINAL
         double originalValue;
+#endif
         HP_TYPE shadowValue;
         double avgRelativeError;
     };

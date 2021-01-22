@@ -1,6 +1,5 @@
 #ifndef REAL_UTIL_HPP
 #define REAL_UTIL_HPP
-#include <mpfr.h>
 #include <stdlib.h>
 #include <array>
 #include <vector>
@@ -10,6 +9,7 @@
 #include <sys/time.h>
 #include <iostream>
 #include <assert.h>
+#include "RealConfigure.h"
 
 #define real_likely(x) __builtin_expect((x), 1)
 #define real_unlikely(x) __builtin_expect((x), 0)
@@ -146,7 +146,7 @@ namespace real
         class VariableMap
         {
             using __value_ptr = RealType *;
-#ifdef DELEGATE_TO_POOL
+#if DELEGATE_TO_POOL
             using __value_type = __value_ptr;
 #else
             using __value_type = RealType;
@@ -176,7 +176,7 @@ namespace real
                 RealCache &c = cache[index];
                 if (c.address != address)
                 {
-#ifdef DELEGATE_TO_POOL
+#if DELEGATE_TO_POOL
                     RealType &ptr = *map[address];
 #else
                     RealType &ptr = map[(Key)KEY_SHIFT(address)];
@@ -188,7 +188,7 @@ namespace real
             }
             void def(Key address)
             {
-#ifdef DELEGATE_TO_POOL
+#if DELEGATE_TO_POOL
                 __value_ptr vp = RealPool<RealType>::INSTANCE.get();
                 map[address] = vp;
 #else
@@ -204,7 +204,7 @@ namespace real
                     c.address = nullptr;
                     c.real_ptr = nullptr;
                 }
-#ifdef DELEGATE_TO_POOL
+#if DELEGATE_TO_POOL
                 auto it = map.find((Key)KEY_SHIFT(address));
                 RealPool<RealType>::INSTANCE.put(it->second);
                 map.erase(it);

@@ -26,7 +26,19 @@
 
 #define TO_DOUBLE(r) mpfr_get_d(r, RND)
 
+
+#if KEEP_ORIGINAL
+#define STREAM_OUT(os, r)   static char buf[512]; \
+                            mpfr_snprintf(buf, 512, "%.32Re (original = %.16e)", c.shadow->shadowValue, c.shadow->originalValue); \
+                            os << buf
+#else
+#define STREAM_OUT(os, r)   static char buf[512]; \
+                            mpfr_snprintf(buf, 512, "%.32Re", c.shadow->shadowValue); \
+                            os << buf
+#endif
+
 #define FMA(t, l, m, r) mpfr_fma(t, l, m, r, RND)
 #define FMS(t, l, m, r) mpfr_fms(t, l, m, r, RND)
+
 
 #endif

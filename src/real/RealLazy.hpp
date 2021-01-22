@@ -1,6 +1,6 @@
 #ifndef REAL_LAZY_HPP
 #define REAL_LAYZ_HPP
-#include <mpfr.h>
+#include "RealConfigure.h"
 #include "ShadowValue.hpp"
 
 namespace real
@@ -242,14 +242,18 @@ namespace real
             {
                 shadow = ShadowPool::INSTANCE.get();
                 ASSIGN_D(shadow->shadowValue, v);
+#if KEEP_ORIGINAL
                 shadow->originalValue = v;
+#endif
                 shadow->avgRelativeError = 0;
             }
             Real(const Real &r)
             {
                 shadow = ShadowPool::INSTANCE.get();
                 ASSIGN(shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
                 shadow->originalValue = r.shadow->originalValue;
+#endif
                 shadow->avgRelativeError = 0;
             }
             Real(Real &&r) noexcept
@@ -296,7 +300,7 @@ namespace real
             inline Real &operator=(const double &r)
             {
                 ASSIGN_D(this->shadow->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 shadow->originalValue = r;
 #endif
                 return *this;
@@ -305,7 +309,7 @@ namespace real
             inline Real &operator+=(const double &r)
             {
                 ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 shadow->originalValue += r;
 #endif
                 return *this;
@@ -313,7 +317,7 @@ namespace real
             inline Real &operator-=(const double &r)
             {
                 SUB_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 shadow->originalValue -= r;
 #endif
                 return *this;
@@ -321,7 +325,7 @@ namespace real
             inline Real &operator*=(const double &r)
             {
                 MUL_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 shadow->originalValue *= r;
 #endif
                 return *this;
@@ -329,7 +333,7 @@ namespace real
             inline Real &operator/=(const double &r)
             {
                 DIV_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 shadow->originalValue /= r;
 #endif
                 return *this;
@@ -350,9 +354,7 @@ namespace real
 
             friend std::ostream &operator<<(std::ostream &os, const Real &c)
             {
-                static char buf[512];
-                mpfr_snprintf(buf, 512, "%.32Re (original = %.16e)", c.shadow->shadowValue, c.shadow->originalValue);
-                os << buf;
+                STREAM_OUT(os, c);
                 return os;
             }
         };
@@ -394,7 +396,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 ADD_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue + rr->originalValue;
 #endif
             }
@@ -408,7 +410,7 @@ namespace real
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 ADD_RD(acc->shadowValue, ll->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue + r;
 #endif
             }
@@ -424,7 +426,7 @@ namespace real
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                     ADD_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue + rr->originalValue;
 #endif
                 }
@@ -432,7 +434,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                     ADD_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue + rr->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -446,7 +448,7 @@ namespace real
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
                 ADD_RD(acc->shadowValue, acc->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue + r;
 #endif
             }
@@ -462,7 +464,7 @@ namespace real
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                     ADD_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue + acc->originalValue;
 #endif
                 }
@@ -470,7 +472,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                     ADD_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue + tmp->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -485,7 +487,7 @@ namespace real
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 ADD_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue + tmp2->originalValue;
 #endif
                 ShadowPool::INSTANCE.put(tmp2);
@@ -505,7 +507,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 MUL_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue * rr->originalValue;
 #endif
             }
@@ -519,7 +521,7 @@ namespace real
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 MUL_RD(acc->shadowValue, ll->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue * r;
 #endif
             }
@@ -535,7 +537,7 @@ namespace real
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                     MUL_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue * rr->originalValue;
 #endif
                 }
@@ -543,7 +545,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                     MUL_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue * rr->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -557,7 +559,7 @@ namespace real
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
                 MUL_RD(acc->shadowValue, acc->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue * r;
 #endif
             }
@@ -573,7 +575,7 @@ namespace real
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                     MUL_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue * acc->originalValue;
 #endif
                 }
@@ -581,7 +583,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                     MUL_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue * tmp->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -596,7 +598,7 @@ namespace real
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 MUL_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue * tmp2->originalValue;
 #endif
                 ShadowPool::INSTANCE.put(tmp2);
@@ -616,7 +618,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 SUB_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue - rr->originalValue;
 #endif
             }
@@ -630,7 +632,7 @@ namespace real
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 SUB_RD(acc->shadowValue, ll->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue - r;
 #endif
             }
@@ -643,7 +645,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
                 SUB_DR(acc->shadowValue, l, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = l - rr->originalValue;
 #endif
             }
@@ -659,7 +661,7 @@ namespace real
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                     SUB_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue - rr->originalValue;
 #endif
                 }
@@ -667,7 +669,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                     SUB_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue - rr->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -681,7 +683,7 @@ namespace real
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
                 SUB_RD(acc->shadowValue, acc->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue - r;
 #endif
             }
@@ -693,7 +695,7 @@ namespace real
                 const double &l = exp.derived().lhs;
                 ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                 SUB_DR(acc->shadowValue, l, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = l - acc->originalValue;
 #endif
             }
@@ -709,7 +711,7 @@ namespace real
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                     SUB_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue - acc->originalValue;
 #endif
                 }
@@ -717,7 +719,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                     SUB_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue - tmp->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -732,7 +734,7 @@ namespace real
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 SUB_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue - tmp2->originalValue;
 #endif
                 ShadowPool::INSTANCE.put(tmp2);
@@ -752,7 +754,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 DIV_RR(acc->shadowValue, ll->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue / rr->originalValue;
 #endif
             }
@@ -766,7 +768,7 @@ namespace real
                 const double &r = exp.derived().rhs;
                 const real::sval_ptr ll = l.derived().shadow;
                 DIV_RD(acc->shadowValue, ll->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = ll->originalValue / r;
 #endif
             }
@@ -779,7 +781,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
                 DIV_DR(acc->shadowValue, l, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = l / rr->originalValue;
 #endif
             }
@@ -795,7 +797,7 @@ namespace real
                 {
                     ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                     DIV_RR(acc->shadowValue, acc->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = acc->originalValue / rr->originalValue;
 #endif
                 }
@@ -803,7 +805,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                     DIV_RR(acc->shadowValue, tmp->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = tmp->originalValue / rr->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -817,7 +819,7 @@ namespace real
                 ExpressionEvaluator<L>::eval(acc, exp.derived().lhs);
                 const double &r = exp.derived().rhs;
                 DIV_RD(acc->shadowValue, acc->shadowValue, r);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = acc->originalValue / r;
 #endif
             }
@@ -829,7 +831,7 @@ namespace real
                 const double &l = exp.derived().lhs;
                 ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                 DIV_DR(acc->shadowValue, l, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = l / acc->originalValue;
 #endif
             }
@@ -845,7 +847,7 @@ namespace real
                 {
                     ExpressionEvaluator<R>::eval(acc, exp.derived().rhs);
                     DIV_RR(acc->shadowValue, ll->shadowValue, acc->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue / acc->originalValue;
 #endif
                 }
@@ -853,7 +855,7 @@ namespace real
                 {
                     sval_ptr tmp = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                     DIV_RR(acc->shadowValue, ll->shadowValue, tmp->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                     acc->originalValue = ll->originalValue / tmp->originalValue;
 #endif
                     ShadowPool::INSTANCE.put(tmp);
@@ -868,7 +870,7 @@ namespace real
                 sval_ptr tmp1 = ExpressionEvaluator<L>::eval(exp.derived().lhs);
                 sval_ptr tmp2 = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 DIV_RR(acc->shadowValue, tmp1->shadowValue, tmp2->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = tmp1->originalValue / tmp2->originalValue;
 #endif
                 ShadowPool::INSTANCE.put(tmp2);
@@ -902,7 +904,7 @@ namespace real
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMA(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, rr->originalValue);
 #endif
             }
@@ -918,7 +920,7 @@ namespace real
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMA(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, rr->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpL);
@@ -936,7 +938,7 @@ namespace real
                 const real::sval_ptr rr = r.derived().shadow;
 
                 FMA(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, rr->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpM);
@@ -953,7 +955,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr mm = m.derived().shadow;
                 FMA(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -969,7 +971,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMA(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, rr->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpM);
@@ -986,7 +988,7 @@ namespace real
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr mm = m.derived().shadow;
                 FMA(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -1003,7 +1005,7 @@ namespace real
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr ll = l.derived().shadow;
                 FMA(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -1020,7 +1022,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 FMA(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -1044,7 +1046,7 @@ namespace real
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMS(acc->shadowValue, ll->shadowValue, mm->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, -rr->originalValue);
 #endif
             }
@@ -1060,7 +1062,7 @@ namespace real
                 const real::sval_ptr mm = m.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMS(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, -rr->originalValue);
 #endif
 
@@ -1078,7 +1080,7 @@ namespace real
                 const real::sval_ptr ll = l.derived().shadow;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMS(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, -rr->originalValue);
 #endif
 
@@ -1096,7 +1098,7 @@ namespace real
                 const real::sval_ptr mm = m.derived().shadow;
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 FMS(acc->shadowValue, ll->shadowValue, mm->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, mm->originalValue, -tmpR->originalValue);
 #endif
 
@@ -1113,7 +1115,7 @@ namespace real
                 const RealBase<Real> &r = exp.derived().rhs;
                 const real::sval_ptr rr = r.derived().shadow;
                 FMS(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, rr->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, -rr->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpM);
@@ -1130,7 +1132,7 @@ namespace real
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr mm = m.derived().shadow;
                 FMS(acc->shadowValue, tmpL->shadowValue, mm->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, mm->originalValue, -tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -1147,7 +1149,7 @@ namespace real
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 const real::sval_ptr ll = l.derived().shadow;
                 FMS(acc->shadowValue, ll->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(ll->originalValue, tmpM->originalValue, -tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);
@@ -1164,7 +1166,7 @@ namespace real
                 const sval_ptr tmpM = ExpressionEvaluator<M>::eval(exp.derived().mhs);
                 const sval_ptr tmpR = ExpressionEvaluator<R>::eval(exp.derived().rhs);
                 FMS(acc->shadowValue, tmpL->shadowValue, tmpM->shadowValue, tmpR->shadowValue);
-#ifdef KEEP_ORIGINAL
+#if KEEP_ORIGINAL
                 acc->originalValue = fma(tmpL->originalValue, tmpM->originalValue, -tmpR->originalValue);
 #endif
                 ShadowPool::INSTANCE.put(tmpR);

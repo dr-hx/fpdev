@@ -1,5 +1,6 @@
 #ifndef REAL_CONFIGURE_HPP
 #define REAL_CONFIGURE_HPP
+#include "RealConfigure.h"
 #include "Real.hpp"
 
 using Addr = void*;

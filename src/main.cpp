@@ -23,6 +23,8 @@
 
 #include "real/ShadowExecution.hpp"
 
+#include "qd/include/qd/dd_real.h"
+
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
@@ -65,19 +67,18 @@ private:
 };
 
 int main(int argc, const char **argv) {
-  double x,y,z;
-  SVal &r = DEF(x);
-  SVal &s = DEF(y);
-  SVal &t = DEF(z);
+  dd_real a,b;
+  a = 1.2;
+  b = 1.1;
+  dd_real c = a*b;
 
+  std::cout <<"hello\n";
+  std::cout << c;
 
-  r = 1; s = 2;
-
-  t = r + s;
-
-  int i;
-
-  mpfr_printf("%Re\n", t.shadow->shadowValue);
+  
+  real::Real ra = 1.2, rb = 1.1;
+  real::Real rc = ra * rb;
+  std::cout << rc;
 
   // CommonOptionsParser op(argc, argv, ToolingSampleCategory);
   // RefactoringTool Tool(op.getCompilations(), op.getSourcePathList());
