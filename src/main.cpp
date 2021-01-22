@@ -90,6 +90,16 @@ int main(int argc, const char **argv) {
   real::Real rc = ra * rb;
   std::cout << rc;
 
+  std::map<int, int*> map;
+  int* &pp = map[0];
+  if(!pp)
+  {
+    pp = &argc;
+    if(map[0])
+    std::cout<<"nothing";
+  }
+
+
   // CommonOptionsParser op(argc, argv, ToolingSampleCategory);
   // RefactoringTool Tool(op.getCompilations(), op.getSourcePathList());
 

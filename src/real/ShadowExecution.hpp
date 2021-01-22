@@ -37,7 +37,7 @@ struct ShadowStackFrame
     }
     inline void loadParm(int id, SVal& var, double ovar)
     {
-        if(realArgs[id])
+        if(realArgs && realArgs[id])
         {
             var = *realArgs[id];
         }
@@ -81,9 +81,9 @@ static ShadowStackFrame* topFrame = &rootFrame;
 #define S_SVAL SVal&
 
 #define VARMAP VarMap::INSTANCE
-#define DEF(v) VARMAP[&(v)]
+#define DEF(v) VARMAP.def(&(v))
 #define UNDEF(v) VARMAP.undef(&(v))
-#define SVAR(v) VARMAP[&(v)]
+#define SVAR(v) VARMAP.getOrInit(&(v))
 
 void ARRDEF(double* arr, uint size)
 {

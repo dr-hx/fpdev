@@ -170,6 +170,34 @@ namespace real
             RealCache cache[cacheSize];
 
         public:
+            RealType &getOrInit(const double *address)
+            {
+                int index = KEY_SHIFT(address) & mask;
+                RealCache &c = cache[index];
+                if (c.address != address)
+                {
+#if DELEGATE_TO_POOL
+                    RealType *&ptr = map[(Key)KEY_SHIFT(address)];
+                    if(ptr==NULL)
+                    {
+                        ptr = RealPool<RealType>::INSTANCE.get();
+                        *ptr = *address; // init
+                    }
+#else
+                    auto it = map.find((Key)KEY_SHIFT(address));
+                    RealType *ptr = NULL;
+                    if(it==map.end())
+                    {
+                        ptr = &(map[(Key)KEY_SHIFT(address)] = *address); // init
+                    }
+                    else ptr = *it;
+#endif
+                    c.address = address;
+                    c.real_ptr = ptr;
+                }
+                return *c.real_ptr;
+            }
+
             RealType &operator[](Key address)
             {
                 int index = KEY_SHIFT(address) & mask;
@@ -177,23 +205,30 @@ namespace real
                 if (c.address != address)
                 {
 #if DELEGATE_TO_POOL
-                    RealType &ptr = *map[address];
+                    RealType *&ptr = map[(Key)KEY_SHIFT(address)];
+                    if(ptr==NULL)
+                    {
+                        ptr = RealPool<RealType>::INSTANCE.get();
+                    }
 #else
-                    RealType &ptr = map[(Key)KEY_SHIFT(address)];
+                    RealType *ptr = &map[(Key)KEY_SHIFT(address)];
 #endif
                     c.address = address;
-                    c.real_ptr = &ptr;
+                    c.real_ptr = ptr;
                 }
                 return *c.real_ptr;
             }
-            void def(Key address)
+            RealType &def(Key address)
             {
+                RealType *ptr = NULL;
 #if DELEGATE_TO_POOL
                 __value_ptr vp = RealPool<RealType>::INSTANCE.get();
-                map[address] = vp;
+                map[(Key)KEY_SHIFT(address)] = vp;
+                ptr = vp;
 #else
-                map[(Key)KEY_SHIFT(address)]; // create a real with default constructor
+                ptr = &map[(Key)KEY_SHIFT(address)]; // create a real with default constructor
 #endif
+                return *ptr;
             }
             void undef(Key address)
             {
