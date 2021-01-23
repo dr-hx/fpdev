@@ -23,7 +23,7 @@ auto fpInc = unaryOperator(hasAnyOperatorName("++", "--"), hasUnaryOperand(hasTy
 auto fpAssign = binaryOperator(isAssignmentOperator(), hasType(realFloatingPointType()));
 auto fpChange = expr(anyOf(fpInc, fpAssign));
 
-auto IfStmtPat = ifStmt(
+auto IfStmtPat = ifStmt(isExpansionInMainFile(), 
     optionally(hasConditionVariableStatement(fpDecl.bind("decl"))), 
     optionally(hasInitStatement(fpDecl.bind("init")))
     ).bind("parent");
@@ -42,13 +42,12 @@ public:
     IfStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("parent");
         const DeclStmt *cvs = Result.Nodes.getNodeAs<DeclStmt>("decl");
         const DeclStmt *lis = Result.Nodes.getNodeAs<DeclStmt>("init");
         if (cvs == NULL && lis == NULL)
             return;
-
-        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream out;
         if (lis != NULL)
@@ -76,7 +75,7 @@ public:
     }
 };
 
-auto ForStmtPat = forStmt(
+auto ForStmtPat = forStmt(isExpansionInMainFile(), 
     optionally(hasLoopInit(fpDecl.bind("decl"))),
     optionally(hasLoopInit(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("init"))),
     optionally(hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond"))),
@@ -89,6 +88,7 @@ public:
     ForStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const ForStmt *stmt = Result.Nodes.getNodeAs<ForStmt>("parent");
         const DeclStmt *decl = Result.Nodes.getNodeAs<DeclStmt>("decl");
         const Expr *init = Result.Nodes.getNodeAs<Expr>("init");
@@ -97,7 +97,6 @@ public:
 
         if (decl == NULL && init == NULL && cond==NULL && inc==NULL)
             return;
-        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream prefixOut;
 
@@ -149,7 +148,7 @@ public:
 };
 
 // I don't know the meaning of this statement
-auto WhileStmtPat = whileStmt(
+auto WhileStmtPat = whileStmt(isExpansionInMainFile(), 
     optionally(has(fpDecl.bind("decl"))),
     optionally(hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond")))
 ).bind("parent");
@@ -160,13 +159,13 @@ public:
     WhileStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const WhileStmt *stmt = Result.Nodes.getNodeAs<WhileStmt>("parent");
         const DeclStmt *decl = Result.Nodes.getNodeAs<DeclStmt>("decl");
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
 
         if (decl == NULL && cond==NULL)
             return;
-        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream prefixOut;
 
@@ -197,7 +196,7 @@ public:
     }
 };
 
-auto DoStmtPat = doStmt(
+auto DoStmtPat = doStmt(isExpansionInMainFile(), 
     hasCondition(expr(anyOf(fpChange, hasDescendant(fpChange))).bind("cond"))
 ).bind("parent");
 
@@ -207,9 +206,9 @@ public:
     DoStmtPatHandler(std::map<std::string, Replacements> &r) : MatchHandler(r) {}
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const DoStmt *stmt = Result.Nodes.getNodeAs<DoStmt>("parent");
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
-        if(!isInTargets(stmt, Result.SourceManager)) return;
 
         std::ostringstream bodyOut;
 

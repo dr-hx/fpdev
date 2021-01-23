@@ -46,7 +46,7 @@ auto RetStmtPat = returnStmt(hasReturnValue(expr(allOf(hasType(realFloatingPoint
 
 //returnStmt(hasReturnValue(expr(allOf(hasType(realFloatingPointType()), nonSimpleExpr)).bind("expression"))).bind("stmt")
 
-auto target = stmt(eachOf(paramOfCall, RetStmtPat, callFpFunc));
+auto target = stmt(isExpansionInMainFile(), eachOf(paramOfCall, RetStmtPat, callFpFunc));
 
 class ParamPatHandler : public MatchHandler
 {
@@ -108,6 +108,7 @@ public:
     std::vector<ExpressionExtractionRequest> extractions;
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const Expr *actual = Result.Nodes.getNodeAs<Expr>("expression");
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
         const ParmVarDecl *formal = Result.Nodes.getNodeAs<ParmVarDecl>("formal");
@@ -117,14 +118,12 @@ public:
         else
             type = formal->getType();
         
-        if(!isInTargets(actual, Result.SourceManager)) return;
-        
         if(isa<CallExpr>(actual))
         {
             auto call = (const CallExpr*)actual;
-            if(!isInTargets(call->getDirectCallee(), Result.SourceManager))
+            if(!isInTargets(call->getDirectCallee(), Result.SourceManager)) // will not be translated
             {
-                if(!call->getType().getTypePtrOrNull()->isRealFloatingType()) return;
+                if(!call->getType().getTypePtrOrNull()->isRealFloatingType()) return; // do not return fp result
             }
         }
 

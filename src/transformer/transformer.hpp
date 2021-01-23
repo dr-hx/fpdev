@@ -215,6 +215,7 @@ class MatchHandler : public MatchFinder::MatchCallback
 protected:
     std::map<std::string, Replacements> &ReplaceMap;
     const std::set<std::string> *targets;
+    // std::string currentFile;
 
 protected:
     NonOverlappedStmts nonOverlappedStmts;
@@ -233,6 +234,23 @@ protected:
 
 public:
     MatchHandler(std::map<std::string, Replacements> &r) : ReplaceMap(r) {}
+
+    virtual void run(const MatchFinder::MatchResult &Result)
+    {
+    //     const TranslationUnitDecl* file = Result.Nodes.getNodeAs<TranslationUnitDecl>("file");
+    //     if(file!=NULL)
+    //     {
+    //         auto loc = file->getSourceRange();
+    //         assert(loc.isValid());
+    //         // auto id = Result.SourceManager->getFileID(loc);
+    //         // assert(id.isValid());
+    //         // auto filename = Result.SourceManager->getFileEntryForID(id)->tryGetRealPathName().str();
+    //         // currentFile = filename;
+    //         // llvm::outs() << "current file: "<<filename<<"\n";
+    //     }
+    }
+
+
     void setTargets(const std::set<std::string> *t)
     {
         targets = t;
@@ -253,6 +271,15 @@ public:
         auto fn = m->getFilename(m->getFileLoc(n->getBeginLoc())).str();
         return targets->count(fn) != 0;
     }
+
+    // template<typename N>
+    // bool isInCurrent(const N* n, const SourceManager* m)
+    // {
+    //     auto inMain = m->isWrittenInMainFile(n->getBeginLoc());
+    //     // auto fn = m->getFilename(m->getFileLoc(n->getBeginLoc())).str();
+    //     // return currentFile == fn;
+    //     return inMain;
+    // }
 
     static std::string flatten_declStmt(const DeclStmt *decl)
     {
@@ -286,8 +313,7 @@ public:
     void addReplacement(Replacement &r)
     {
         auto path = r.getFilePath().str();
-        if (targets->count(path) == 0)
-            return; // out of targets
+        if(targets->count(path)==0) return;
         Replacements &replace = ReplaceMap[path];
         int size = replace.size();
         auto err = replace.add(r);
@@ -424,7 +450,7 @@ public:
     }
 };
 
-class CodeTransformationTool
+class CodeTransformationTool : public clang::tooling::SourceFileCallbacks
 {
 protected:
     CommonOptionsParser &Options;
@@ -484,37 +510,10 @@ public:
 
     int run()
     {
-        if (int Result = Tool.runAndSave(newFrontendActionFactory(&Finder).get()))
+        if (int Result = Tool.runAndSave(newFrontendActionFactory(&Finder, this).get()))
         {
             return Result;
         }
-
-        // // We need a SourceManager to set up the Rewriter.
-        // IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-        // DiagnosticsEngine Diagnostics(
-        //     IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
-        //     new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts), true);
-
-        // SourceManager Sources(Diagnostics, Tool.getFiles());
-
-        // // Apply all replacements to a rewriter.
-        // Rewriter Rewrite(Sources, LangOptions());
-        // Tool.applyAllReplacements(Rewrite);
-
-        // // Query the rewriter for all the files it has rewritten, dumping their new
-        // // contents to stdout.
-        // for (Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
-        //                                E = Rewrite.buffer_end();
-        //      I != E; ++I)
-        // {
-        //     const FileEntry *Entry = Sources.getFileEntryForID(I->first);
-        //     std::error_code err;
-        //     llvm::raw_fd_ostream out(Entry->getName(), err);
-        //     out << "// Rewrite by " << toolName << "\n";
-        //     I->second.write(out);
-        //     out.flush();
-        //     out.close();
-        // }
         return 0;
     }
 };

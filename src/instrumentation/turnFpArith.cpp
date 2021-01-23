@@ -25,7 +25,7 @@ static llvm::cl::OptionCategory ScDebugTool("ScDebug Tool");
 // for var useage analysis
 auto fpType = realFloatingPointType(); // may be extended
 auto fpVarDecl = varDecl(hasType(fpType), anyOf(hasLocalStorage(), isStaticLocal()));
-auto fpVarDeclInFunc = functionDecl(forEachDescendant(fpVarDecl.bind("varDecl")));
+auto fpVarDeclInFunc = functionDecl(isExpansionInMainFile(), forEachDescendant(fpVarDecl.bind("varDecl")));
 
 auto fpFunc = functionDecl(anyOf(returns(fpType), hasAnyParameter(hasType(fpType))));
 auto fpInc = unaryOperator(hasAnyOperatorName("++", "--"), hasUnaryOperand(expr(hasType(fpType))));
@@ -34,28 +34,28 @@ auto fpAssignFpCall = binaryOperator(isAssignmentOperator(), hasType(fpType), ha
 auto fpAssignFpExpr = binaryOperator(isAssignmentOperator(), hasType(fpType), hasRHS(expr(unless(callFpFunc)).bind("rhs")));
 
 // how to handle struct/union
-auto sharedAddressVar = unaryOperator(hasOperatorName("&"), hasUnaryOperand(declRefExpr(to(fpVarDecl.bind("refVar")))));
-auto referencedVar = varDecl(hasType(lValueReferenceType(pointee(fpType))), hasInitializer(declRefExpr(to(fpVarDecl.bind("refVar")))));
+auto sharedAddressVar = unaryOperator(hasOperatorName("&"), hasUnaryOperand(declRefExpr(isExpansionInMainFile(), to(fpVarDecl.bind("refVar")))));
+auto referencedVar = varDecl(isExpansionInMainFile(), hasType(lValueReferenceType(pointee(fpType))), hasInitializer(declRefExpr(to(fpVarDecl.bind("refVar")))));
 
 auto fpRefType = qualType(anyOf(lValueReferenceType(pointee(fpType)), pointerType(pointee(fpType))));
-auto referencedParmVar = callExpr(forEachArgumentWithParam(declRefExpr(to(fpVarDecl.bind("refVar"))), parmVarDecl(hasType(fpRefType))));
+auto referencedParmVar = callExpr(isExpansionInMainFile(), forEachArgumentWithParam(declRefExpr(to(fpVarDecl.bind("refVar"))), parmVarDecl(hasType(fpRefType))));
 
 // from varDecl, we cannot navigate back to its declStmt. so we need the following patterns to get the def sites
 // auto fpParmDef = functionDecl(forEach(parmVarDecl(hasType(fpType)).bind("def")), hasBody(compoundStmt().bind("def-site")));
-auto fpParmDef = parmVarDecl(hasType(fpType), hasAncestor(functionDecl(hasBody(compoundStmt().bind("def-site"))))).bind("def");
-auto fpVarDef = declStmt(forEach(varDecl(hasType(fpType), optionally(hasInitializer(callFpFunc.bind("rhs")))).bind("def"))).bind("def-site");
+auto fpParmDef = parmVarDecl(isExpansionInMainFile(), hasType(fpType), hasAncestor(functionDecl(hasBody(compoundStmt().bind("def-site"))))).bind("def");
+auto fpVarDef = declStmt(isExpansionInMainFile(), forEach(varDecl(hasType(fpType), optionally(hasInitializer(callFpFunc.bind("rhs")))).bind("def"))).bind("def-site");
 
-auto fpConsArrVarDef = declStmt(forEach(varDecl(hasType(constantArrayType(hasElementType(fpType)))).bind("arr-def"))).bind("def-site");
+auto fpConsArrVarDef = declStmt(isExpansionInMainFile(), forEach(varDecl(hasType(constantArrayType(hasElementType(fpType)))).bind("arr-def"))).bind("def-site");
 
-auto fpVarDefGlobal = varDecl(hasType(fpType), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
-auto fpConsArrVarDefGlobal = varDecl(hasType(constantArrayType(hasElementType(fpType))), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+auto fpVarDefGlobal = varDecl(isExpansionInMainFile(), hasType(fpType), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+auto fpConsArrVarDefGlobal = varDecl(isExpansionInMainFile(), hasType(constantArrayType(hasElementType(fpType))), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
 
 
 // non local var collection
-auto fpAddrRes = unaryOperator(hasOperatorName("*"), hasType(fpType)).bind("lFpVal");
-auto fpRefUse = declRefExpr(to(varDecl(hasType(lValueReferenceType(pointee(fpType)))))).bind("lFpVal");
-auto fpArrElem = arraySubscriptExpr(hasType(fpType)).bind("lFpVal");
-auto fpField = memberExpr(hasType(fpType)).bind("lFpVal");
+auto fpAddrRes = unaryOperator(isExpansionInMainFile(), hasOperatorName("*"), hasType(fpType)).bind("lFpVal");
+auto fpRefUse = declRefExpr(isExpansionInMainFile(), to(varDecl(hasType(lValueReferenceType(pointee(fpType)))))).bind("lFpVal");
+auto fpArrElem = arraySubscriptExpr(isExpansionInMainFile(), hasType(fpType)).bind("lFpVal");
+auto fpField = memberExpr(isExpansionInMainFile(), hasType(fpType)).bind("lFpVal");
 
 // constant array type should be handled
 // auto fpArrDef = varDecl(hasType(constantArrayType(hasElementType(fpType))))
@@ -68,16 +68,16 @@ auto fpArg = expr(anyOf(
     arraySubscriptExpr(hasType(fpType)),
     memberExpr(hasType(fpType))));
 
-auto fpCallArg = callExpr(callee(fpFunc.bind("callee")), forEachArgumentWithParam(fpArg.bind("arg"), parmVarDecl(hasType(fpType)).bind("parm"))).bind("call");
+auto fpCallArg = callExpr(isExpansionInMainFile(), callee(fpFunc.bind("callee")), forEachArgumentWithParam(fpArg.bind("arg"), parmVarDecl(hasType(fpType)).bind("parm"))).bind("call");
 
 // four types:  assignment of arith expr, assignment of fpcall, fpcall, fpinc
-auto stmtToBeConverted = compoundStmt(forEach(stmt(anyOf(fpInc, fpAssignFpCall, fpAssignFpExpr, callFpFunc)).bind("stmt")));
+auto stmtToBeConverted = compoundStmt(isExpansionInMainFile(), forEach(stmt(anyOf(fpInc, fpAssignFpCall, fpAssignFpExpr, callFpFunc)).bind("stmt")));
 // auto fpVarDefWithCallInitializer = declStmt(forEach(varDecl(hasType(fpType), hasInitializer(callFpFunc.bind("init"))).bind("var"))).bind("declStmt");
 
-auto fpDynArrVarDef_new = cxxNewExpr(hasType(pointerType(pointee(fpType))), hasArraySize(expr().bind("size"))).bind("alloc");
-auto fpDynArrVarDef_malloc = explicitCastExpr(hasDestinationType(pointerType(pointee(fpType))), hasSourceExpression(callExpr(callee(functionDecl(hasName("malloc"))), hasArgument(0, expr().bind("size"))))).bind("alloc");
-auto fpDynArrVarUndef_delete = cxxDeleteExpr(hasDescendant(declRefExpr(to(varDecl(hasType(pointerType(pointee(fpType)))))).bind("pointer"))).bind("free");
-auto fpDynArrVarUndef_free = callExpr(callee(functionDecl(hasName("free"))), hasArgument(0, expr(hasType(pointerType(pointee(fpType)))).bind("pointer"))).bind("free");;
+auto fpDynArrVarDef_new = cxxNewExpr(isExpansionInMainFile(), hasType(pointerType(pointee(fpType))), hasArraySize(expr().bind("size"))).bind("alloc");
+auto fpDynArrVarDef_malloc = explicitCastExpr(isExpansionInMainFile(), hasDestinationType(pointerType(pointee(fpType))), hasSourceExpression(callExpr(callee(functionDecl(hasName("malloc"))), hasArgument(0, expr().bind("size"))))).bind("alloc");
+auto fpDynArrVarUndef_delete = cxxDeleteExpr(isExpansionInMainFile(), hasDescendant(declRefExpr(to(varDecl(hasType(pointerType(pointee(fpType)))))).bind("pointer"))).bind("free");
+auto fpDynArrVarUndef_free = callExpr(isExpansionInMainFile(), callee(functionDecl(hasName("free"))), hasArgument(0, expr(hasType(pointerType(pointee(fpType)))).bind("pointer"))).bind("free");;
 
 // local fp var = fpVarDeclInFunc - sharedAddressVar - referencedVar - referencedParmVar
 
@@ -88,9 +88,9 @@ auto fpDynArrVarUndef_free = callExpr(callee(functionDecl(hasName("free"))), has
 // break is a semi-closed stmt that closes the nearest switch and for/while/do
 
 // for scope analysis
-auto funcDecl = functionDecl().bind("func-scope");
-auto scope = stmt(anyOf(compoundStmt(), ifStmt(), forStmt(), whileStmt(), doStmt(), switchStmt())).bind("stmt-scope");
-auto outStmt = stmt(anyOf(breakStmt(), returnStmt(optionally(hasReturnValue(stmt().bind("retVal")))))).bind("out-scope");
+auto funcDecl = functionDecl(isExpansionInMainFile()).bind("func-scope");
+auto scope = stmt(isExpansionInMainFile(), anyOf(compoundStmt(), ifStmt(), forStmt(), whileStmt(), doStmt(), switchStmt())).bind("stmt-scope");
+auto outStmt = stmt(isExpansionInMainFile(), anyOf(breakStmt(), returnStmt(optionally(hasReturnValue(stmt().bind("retVal")))))).bind("out-scope");
 
 // root: parent = NULL, statement = NULL
 // function decl: parent != NULL, statement = NULL
@@ -906,20 +906,21 @@ public:
     }
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         {
             const VarDecl *decl = Result.Nodes.getNodeAs<VarDecl>("varDecl"); // var decl, single double var only
             const VarDecl *sharedVar = Result.Nodes.getNodeAs<VarDecl>("refVar");
             const VarDecl *def = Result.Nodes.getNodeAs<VarDecl>("def"); // var def
             const VarDecl *arrDef = Result.Nodes.getNodeAs<VarDecl>("arr-def");
 
-            if (decl != NULL && isInTargets(decl, Result.SourceManager))
+            if (decl != NULL)
             {
                 varUse.declare(decl);
                 fillReplace(decl, Result);
                 return;
             }
 
-            if (def != NULL && isInTargets(def, Result.SourceManager))
+            if (def != NULL)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
@@ -928,7 +929,7 @@ public:
                 return;
             }
 
-            if(arrDef !=NULL && isInTargets(arrDef, Result.SourceManager))
+            if(arrDef !=NULL)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 varDefs.insert(arrDef, site);
@@ -937,7 +938,7 @@ public:
                 return;
             }
 
-            if (sharedVar != NULL && isInTargets(sharedVar, Result.SourceManager))
+            if (sharedVar != NULL)
             {
                 varUse.share(sharedVar);
                 fillReplace(sharedVar, Result);
@@ -947,7 +948,7 @@ public:
 
         {
             const Expr *lFpVal = Result.Nodes.getNodeAs<Expr>("lFpVal");
-            if (lFpVal != NULL  && isInTargets(lFpVal, Result.SourceManager))
+            if (lFpVal != NULL)
             {
                 lFpVals.insert(lFpVal);
                 fillReplace(lFpVal, Result);
@@ -957,7 +958,7 @@ public:
 
         {
             auto call = Result.Nodes.getNodeAs<CallExpr>("call");
-            if (call != NULL && isInTargets(call, Result.SourceManager))
+            if (call != NULL)
             {
                 auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
                 auto arg = Result.Nodes.getNodeAs<Expr>("arg");
@@ -970,7 +971,7 @@ public:
 
         {
             const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-            if (stmt != NULL && isInTargets(stmt, Result.SourceManager))
+            if (stmt != NULL)
             {
                 if (isa<UnaryOperator>(stmt))
                 {
@@ -1001,13 +1002,13 @@ public:
             const Expr* alloc = Result.Nodes.getNodeAs<Expr>("alloc");
             const Expr* free = Result.Nodes.getNodeAs<Expr>("free");
 
-            if(alloc!=NULL && isInTargets(alloc, Result.SourceManager))
+            if(alloc!=NULL)
             {
                 const Expr* size = Result.Nodes.getNodeAs<Expr>("size");
                 dynArrRecord.logAlloc(alloc, size, *Result.SourceManager);
                 fillReplace(alloc, Result);
             } 
-            else if(free!=NULL && isInTargets(free, Result.SourceManager))
+            else if(free!=NULL)
             {
                 const Expr* pt = Result.Nodes.getNodeAs<Expr>("pointer");
                 dynArrRecord.logFree(free, pt, *Result.SourceManager);
@@ -1021,17 +1022,17 @@ public:
             const Stmt *stmtScope = Result.Nodes.getNodeAs<Stmt>("stmt-scope");
             const Stmt *outScope = Result.Nodes.getNodeAs<Stmt>("out-scope");
 
-            if (funcScope != NULL && isInTargets(funcScope, Result.SourceManager))
+            if (funcScope != NULL)
             {
                 scopeTree->insert(new Scope(funcScope, Result.SourceManager));
                 fillReplace(funcScope, Result);
             }
-            if (stmtScope != NULL && isInTargets(stmtScope, Result.SourceManager))
+            if (stmtScope != NULL)
             {
                 scopeTree->insert(new Scope(stmtScope, Result.SourceManager));
                 fillReplace(stmtScope, Result);
             }
-            if (outScope != NULL && isInTargets(outScope, Result.SourceManager))
+            if (outScope != NULL)
             {
                 const Expr *ret = Result.Nodes.getNodeAs<Expr>("retVal");
                 scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager, ret));
@@ -1488,7 +1489,7 @@ protected:
 
             if (ret.size() == 0) {}
             else
-                stream << ret << " = " << oRet <<";";
+                stream << ret << " = " << oRet <<"; // in";
         }
 
         stream.flush();

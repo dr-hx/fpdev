@@ -86,7 +86,6 @@ testnorm : normalization
 		$$n ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\
 	done
 
-
 testins : instrumentation testnorm
 	for name in $(transObjects); \
 	do \

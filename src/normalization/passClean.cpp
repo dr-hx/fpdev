@@ -10,7 +10,7 @@ using namespace clang::tooling;
 
 static llvm::cl::OptionCategory ToolingSampleCategory("ScDebug Tool");
 
-auto target = nullStmt(hasParent(compoundStmt())).bind("null");
+auto target = nullStmt(isExpansionInMainFile(), hasParent(compoundStmt())).bind("null");
 
 class CleanStmtPatHandler : public MatchHandler
 {
@@ -19,10 +19,11 @@ public:
     
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         const SourceManager *Manager = Result.SourceManager;
         const NullStmt *nullStmt = Result.Nodes.getNodeAs<NullStmt>("null");
 
-        if(nullStmt!=NULL && isInTargets(nullStmt, Result.SourceManager)) {
+        if(nullStmt!=NULL) {
             Replacement Rep = ReplacementBuilder::create(*Manager, nullStmt, "");
             Replacements &Replace = ReplaceMap[Rep.getFilePath().str()];
             llvm::Error err = Replace.add(Rep);

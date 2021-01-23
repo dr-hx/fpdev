@@ -32,7 +32,7 @@ void testPF0()
   }
 }
 
-int main(int argc, char const *argv[])
+int test(int argc, char const *argv[])
 {
 
     testPF0();

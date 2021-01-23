@@ -40,7 +40,7 @@ auto stmtWithScope = stmt(anyOf(IfStmtPat,ForStmtPat,WhileStmtPat)).bind("stmt")
 
 auto multipleFpDecl = declStmt(unless(hasSingleDecl(anything())),fpDecl).bind("multiple");
 
-auto target = stmt(eachOf(stmtWithScope, hangStmt, multipleFpDecl));
+auto target = stmt(isExpansionInMainFile(), eachOf(stmtWithScope, hangStmt, multipleFpDecl));
 
 // flatten
 
@@ -52,9 +52,10 @@ public:
     std::set<const DeclStmt*> flattenVector;
     virtual void run(const MatchFinder::MatchResult &Result)
     {
+        
         Manager = Result.SourceManager;
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-        if(stmt!=NULL && isInTargets(stmt, Result.SourceManager)) {
+        if(stmt!=NULL) {
             if(isa<WhileStmt>(stmt)) {
                 WhileStmt* ws = (WhileStmt*)stmt;
                 if(ws->getConditionVariableDeclStmt()!=NULL) {
@@ -71,7 +72,7 @@ public:
             }
         } else {
             const DeclStmt* decl = Result.Nodes.getNodeAs<DeclStmt>("multiple");
-            if(decl!=NULL && isInTargets(decl, Result.SourceManager)) {
+            if(decl!=NULL) {
                 flattenVector.insert(decl);
                 addAsNonOverlappedStmt(decl, Result.SourceManager);
             }
@@ -137,6 +138,7 @@ int main(int argc, const char **argv)
 {
     CommonOptionsParser Options(argc, argv, ToolingSampleCategory);
     CodeTransformationTool tool(Options, "Pass Zero: turn empty and hanging statements");
+
     tool.add<decltype(target), SingleStmtPatHandler>(target);
 
     tool.run();
