@@ -13,3 +13,12 @@ src/qd/src/Makefile
 src/qd/fortran/Makefile
 src/qd/tests/Makefile
 *.Po
+src/qd/src/bits.o
+src/qd/src/c_dd.o
+src/qd/src/c_qd.o
+src/qd/src/dd_const.o
+src/qd/src/dd_real.o
+src/qd/src/fpu.o
+src/qd/src/qd_const.o
+src/qd/src/qd_real.o
+src/qd/src/util.o
