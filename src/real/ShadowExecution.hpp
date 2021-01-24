@@ -5,7 +5,7 @@
 
 using Addr = void*;
 using SVal = real::Real;
-using VarMap = real::util::VariableMap<Addr, SVal, 0x800>;
+using VarMap = real::util::VariableMap<Addr, SVal, CACHE_SIZE>;
 
 // SHADOW FRAMEWORK
 struct ShadowStackFrame

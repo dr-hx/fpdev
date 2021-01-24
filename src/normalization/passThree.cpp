@@ -34,7 +34,7 @@ public:
     {
         ExtractionPrinterHelper helper;
         auto exts = extractions;
-        std::sort(exts.begin(), exts.end());
+        ExpressionExtractionRequest::sort(exts);
 
         std::ostringstream out;
         const ExpressionExtractionRequest *lastExt = NULL;

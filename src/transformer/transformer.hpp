@@ -96,6 +96,24 @@ struct ExpressionExtractionRequest
         actualStatementStartLoc = m->getFileLoc(s->getBeginLoc());
     }
 
+    // void operator=(const ExpressionExtractionRequest &r)
+    // {
+    //     llvm::outs() <<" assign ";
+    //     llvm::outs() << this << ":";
+    //     this->actualExpressionRange.print(llvm::outs(), *this->manager);
+    //     llvm::outs() <<" from ";
+    //     llvm::outs() << &r << ":";
+    //     r.actualExpressionRange.print(llvm::outs(), *this->manager);
+    //     llvm::outs() <<"\n";
+
+    //     expression = r.expression;
+    //     type = r.type;
+    //     statement = r.statement;
+    //     manager = r.manager;
+    //     actualExpressionRange = r.actualExpressionRange;
+    //     actualStatementStartLoc = r.actualStatementStartLoc;
+    // }
+
     bool cover(const ExpressionExtractionRequest &r)
     {
         return this->actualExpressionRange.fullyContains(r.actualExpressionRange);
@@ -118,11 +136,32 @@ struct ExpressionExtractionRequest
                 return false;
             }
             else
+            {
                 return l.actualExpressionRange.getBegin() < r.actualExpressionRange.getBegin();
+            }
         }
         else
         {
             return l.actualStatementStartLoc < r.actualStatementStartLoc;
+        }
+    }
+
+    static void sort(std::vector<ExpressionExtractionRequest> &vector)
+    { 
+        // we use simple buddle sort here because std:sort does not work properly for unknown reason.
+        // further improvement can be made here!
+        int size = vector.size();
+        for(int i=0;i<size-1;i++)
+        {
+            for(int j=0;j<size-1-i;j++)
+            {
+                if(vector[j+1] < vector[j])
+                {
+                    auto tmp = vector[j];
+                    vector[j] = vector[j+1];
+                    vector[j+1] = tmp;
+                }
+            }
         }
     }
 };
@@ -347,7 +386,7 @@ public:
     virtual void onEndOfTranslationUnit()
     {
         ExtractionPrinterHelper helper;
-        std::sort(extractionRequests.begin(), extractionRequests.end());
+        ExpressionExtractionRequest::sort(extractionRequests);
         auto unique = std::unique(extractionRequests.begin(), extractionRequests.end());
         extractionRequests.erase(unique, extractionRequests.end());
 

@@ -74,6 +74,16 @@ namespace real
             }
         }
 
+        INLINE_FLAGS Real &&operator-()
+        {
+            Real &res = *RealPool<Real>::INSTANCE.get();
+            SUB_DR(res.shadow->shadowValue, 0, this->shadow->shadowValue);
+#if KEEP_ORIGINAL
+            res.shadow->originalValue = - shadow->originalValue;
+#endif
+            return std::move(res);
+        }
+
         INLINE_FLAGS friend Real &&operator+(const Real &l, const Real &r)
         {
             Real &res = *RealPool<Real>::INSTANCE.get();

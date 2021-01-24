@@ -7,7 +7,7 @@ MAKE_DIR:="$(shell pwd)"
 SRC_DIR:="$(shell pwd)/src"
 TEST_BASE=./test
 TEST_DERIVED_BASE = ${TEST_BASE}/derived
-fn=test.cpp
+fn=ETD_S.c
 
 
 CC = /usr/bin/clang++
@@ -21,7 +21,7 @@ LLVM_BIN_PATH := /usr/local/opt/llvm/bin
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
 LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
-EXTRA_FLAGS := -- -Wunused-value -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -Isrc/real -Isrc/qd/include  -std=c++17
+EXTRA_FLAGS := --  -xc++ -Wunused-value -I/usr/local/include -I/usr/local/Cellar/llvm/11.0.0_1/include/c++/v1 -I/usr/local/Cellar/llvm/11.0.0_1/lib/clang/11.0.0/include/ -Isrc -Isrc/qd/include  -std=c++17
 
 CLANG_LIBS := \
 	-lclangAST \

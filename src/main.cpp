@@ -72,32 +72,21 @@ void test()
   sum ++;
   std::cout << sum << std::endl;
 }
-
+using namespace std;
 int main(int argc, const char **argv) {
-  test();
-  test();
+  int myints[] = {1,2,3,4,6,5,5,7};
+  vector<int> myvector (myints, myints+8);               // 32 71 12 45 26 80 53 33
+  vector<int>::iterator it;
+ 
+  // using default comparison (operator <):
+  sort (myvector.begin(), myvector.end());           //(12 32 45 71)26 80 53 33
   
-  dd_real a,b;
-  a = 1.2;
-  b = 1.1;
-  dd_real c = a*b;
-
-  std::cout <<"hello\n";
-  std::cout << c;
-
-  
-  real::Real ra = 1.2, rb = 1.1;
-  real::Real rc = ra * rb;
-  std::cout << rc;
-
-  std::map<int, int*> map;
-  int* &pp = map[0];
-  if(!pp)
-  {
-    pp = &argc;
-    if(map[0])
-    std::cout<<"nothing";
-  }
+  // print out content:
+  cout << "myvector contains:";
+  for (it=myvector.begin(); it!=myvector.end(); ++it)
+    cout << " " << *it;
+ 
+  cout << endl;
 
 
   // CommonOptionsParser op(argc, argv, ToolingSampleCategory);

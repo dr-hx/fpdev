@@ -6,10 +6,10 @@
 void EAST_DUMP(std::ostream& stream, double d) {} // pseudo function
 
 void EAST_DUMP(std::ostream& stream, const SVal &d) {
-    stream << d;
+    stream << d << "\n";
 }
 
-void EAST_ANALYZE(std::ostream& stream, double d) {} // pseudo function
+void EAST_ANALYZE(std::ostream& stream, double d) {stream << d <<"\n";} // pseudo function
 
 void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov) 
 {
@@ -18,6 +18,7 @@ void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov)
     double re = (dsv-ov)/dsv;
     long *pre = (long*)&re;
     *pre &= 0x7FFFFFFFFFFFFFFF;
+    EAST_DUMP(stream, sv);
     if(re==0)
     {
         stream <<"Relative error is smaller than 10^-16\n";

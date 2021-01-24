@@ -926,6 +926,10 @@ public:
             if (def != NULL)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
+                if(isa<ParmVarDecl>(def))
+                {
+                    if(site->getSourceRange().fullyContains(def->getSourceRange())) return;
+                }
                 const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
                 varDefs.insert(def, site, init);
                 fillReplace(def, Result);
@@ -1098,7 +1102,7 @@ public:
             llvm::raw_string_ostream header_stream(header);
 
             { // add hearder
-                header_stream << "#include <ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
+                header_stream << "#include <real/ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
             }
 
             // Var and scope construction

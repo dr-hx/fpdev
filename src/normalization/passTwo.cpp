@@ -59,7 +59,8 @@ public:
         std::ostringstream out;
         const ExpressionExtractionRequest *lastExt = NULL;
 
-        std::sort(exts.begin(), exts.end());
+        ExpressionExtractionRequest::sort(exts);
+
         auto unique = std::unique(exts.begin(), exts.end());
         exts.erase(unique, exts.end());
 
@@ -85,7 +86,7 @@ public:
             else
             {
                 std::string parTmp = randomIdentifier("paramTmp");
-                out << "const " << extIt->type.getAsString()
+                out << "const double"
                     << " " << parTmp << " = " << print(extIt->expression, &helper) << ";\n";
                 helper.addShortcut(extIt->expression, parTmp); // must after the above line
 

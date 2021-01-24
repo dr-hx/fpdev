@@ -206,6 +206,7 @@
                 // "-lclangdSupport",
                 // "-lclangdXpcJsonConversions",
                 // "-lclangdXpcTransport",
+                "-lm",
                 "-lqd",
                 "-o",
                 "${workspaceFolder}/bin/main"

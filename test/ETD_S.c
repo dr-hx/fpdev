@@ -14,6 +14,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include <real/EAST.h>
 
 #define KB 8.625e-5
 #define N 500
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
 	double EMvac = 1.1;							   //空位的迁移能eV
 	double Dvac;
 	Dvac = 1.0e-6 * exp(-EMvac / (KB * T)); //m^2/s。1.0e-6*exp(-EMvac/(KB*T))m^2/s 空位的扩散系数,m^2/s=1.0e+4nm^2/s
+	
 	//cout<<"Dvac="<<Dvac<<endl;
 	double Gama = 6.25e18; //eV/m^2。6.25e+18eV/m^2,eV/m^2=1.0e-4eV/nm^2
 	//cout<<"Gama="<<Gama<<"\n"<<endl;
@@ -78,12 +80,13 @@ int main(int argc, char *argv[])
 	//double acons = 6.02e23;
 	//double at2cb = 8.385e22;
 	//double cb2at = 1./at2cb;
-	/*for(i=0;i<N;i++){
+	for(i=0;i<N;i++){
 		C[i]=0.0;
-		//Fa[i]=Fb[i]=Fc[i]=Fd[i]=0.0;
+		Fa[i]=Fb[i]=Fc[i]=Fd[i]=0.0;
 
-	}*/
+	}
 	C[0] = Cinit;
+
 	//C[0] = Cinit*at2cb;                 //atom-1转换成cm
 
 	double Alpha0, Beta0;
@@ -239,7 +242,12 @@ int main(int argc, char *argv[])
 		for (i = 0; i < N; i++)
 		{
 			C[i] = phi3[i] * C[i] + pow( dt,  -2) * L3[i] * (poly1[i] * Fc[i] + poly2[i] * (Fa[i] + Fb[i]) + poly3[i] * Fd[i]);
+			// if(isnan(C[i]))
+			// {
+			// 	EAST_ANALYZE(std::cout, C[i]);
+			// }
 		}
+		
 		t = t + dt;
 		sumalpha = sumalpha_a = sumalpha_b = sumalpha_d = 0.0;
 		sumbeta = sumbeta_a = sumbeta_b = sumbeta_d = 0.0;
@@ -248,6 +256,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < N; i++)
 	{
 		printf("C[%d]=%e\n", i, C[i]);
+		EAST_ANALYZE(std::cout, C[i]);
 	}
 	end = clock();
 	totaltime = (end - start) / CLOCKS_PER_SEC;

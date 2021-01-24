@@ -8,7 +8,7 @@
 
 
 // Default port is defined here
-#define PORT_TYPE DD_PORT
+#define PORT_TYPE MPFR_PORT
 
 /* 
     A flag that determines whether an original execution should be performed along with the shadow execution.
@@ -26,5 +26,7 @@
     A flag that determines whether the function is inlined.
 */
 #define INLINE_FLAGS inline
+
+#define CACHE_SIZE 0x8000
 
 #endif
