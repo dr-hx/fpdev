@@ -7,3 +7,9 @@ src/qd/fortran
 src/qd/tests
 src/qd/src/.deps
 src/qd/src/.libs
+src/qd/config.log
+src/qd/config.status
+src/qd/Makefile
+src/qd/config/Makefile
+src/qd/include/Makefile
+src/qd/src/Makefile

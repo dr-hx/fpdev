@@ -163,7 +163,6 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result)
     {
         auto record = Result.Nodes.getNodeAs<RecordDecl>("record");
-        llvm::outs() << "find " << record->getID() <<"\n";
         auto it = recordMap->recordInfoMap.find(record->getID());
         if(it!=recordMap->recordInfoMap.end() && it->second.interesting)
         {
