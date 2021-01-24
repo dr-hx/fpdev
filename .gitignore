@@ -2,9 +2,6 @@ bin
 a.out
 test/derived
 src/qd/autom4te.cache
-src/qd/docs
-src/qd/fortran
-src/qd/tests
 src/qd/src/.deps
 src/qd/src/.libs
 src/qd/config.log
@@ -13,3 +10,8 @@ src/qd/Makefile
 src/qd/config/Makefile
 src/qd/include/Makefile
 src/qd/src/Makefile
+src/qd/docs/Makefile
+src/qd/fortran/Makefile
+src/qd/tests/Makefile
+*.pdf
+*.Po
