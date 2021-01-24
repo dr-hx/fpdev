@@ -474,6 +474,27 @@ namespace real
             STREAM_OUT(os, c);
             return os;
         }
+
+        INLINE_FLAGS friend bool operator<(const Real &l, const Real &r)
+        {
+            return LESS_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
+        INLINE_FLAGS friend bool operator<=(const Real &l, const Real &r)
+        {
+            return LESSEQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
+        INLINE_FLAGS friend bool operator==(const Real &l, const Real &r)
+        {
+            return EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
+        INLINE_FLAGS friend bool operator>(const Real &l, const Real &r)
+        {
+            return GREATER_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
+        INLINE_FLAGS friend bool operator<=(const Real &l, const Real &r)
+        {
+            return GREATEREQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
     };
 
     class Timer

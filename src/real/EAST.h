@@ -29,6 +29,13 @@ void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov)
     }
 }
 
+bool EAST_CONDITION(std::ostream& stream, double v) {return v;}
+bool EAST_CONDITION(std::ostream& stream, bool sv, bool ov)
+{
+    if(sv!=ov) stream << "Control flow divergence!\n"
+    return ov;
+}
+
 #define EAST_ESCAPE_BEGIN PUSHCALL(0); // push an empty frame
 #define EAST_ESCAPE_END POPCALL(); // pop the empty frame
 

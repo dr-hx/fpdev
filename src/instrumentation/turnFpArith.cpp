@@ -1510,9 +1510,9 @@ protected:
         
         if(funcName == "EAST_DUMP")
         {
-            stream << print(call, &helper) << ";";
+            stream << print(call, &helper) << "";
         }
-        else if(funcName == "EAST_ANALYZE")
+        else if(funcName == "EAST_ANALYZE" || funcName == "EAST_CONDITION")
         {
             stream << "EAST_ANALYZE("
                    << print(call->getArg(0), &helper)
@@ -1520,7 +1520,7 @@ protected:
                    << print(call->getArg(1), &helper)
                    <<","
                    << print(call->getArg(1))
-                   << ");";
+                   << ")";
         }
     }
 

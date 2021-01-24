@@ -40,7 +40,17 @@
 #define FMA(t, l, m, r) mpfr_fma(t, l, m, r, RND)
 #define FMS(t, l, m, r) mpfr_fms(t, l, m, r, RND)
 
+
+#define LESS_RR(l,r) mpfr_less_p(l,r)
+#define LESSEQ_RR(l,r) mpfr_lessequal_p(l,r)
+#define EQUAL_RR(l,r) mpfr_equal_p(l,r)
+#define GREATER_RR(l,r) mpfr_greater_p(l,r)
+#define GREATEREQ_RR(l,r) mpfr_greaterequal_p(l,r)
+
+
+
 #define EXP_R(res, r) mpfr_exp(res, r, RND)
 #define POW_RR(res, a, b) mpfr_pow(res, a, b, RND) 
+
 
 #endif

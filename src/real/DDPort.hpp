@@ -30,8 +30,15 @@
 
 #define STREAM_OUT(os, r)   r.shadow->shadowValue.dump("", os)
 
+#define LESS_RR(l,r) l<r
+#define LESSEQ_RR(l,r) l<=r
+#define EQUAL_RR(l,r) l==r
+#define GREATER_RR(l,r) l>r
+#define GREATEREQ_RR(l,r) l>=r
 
 #define EXP_R(res, r) res = exp(r)
 #define POW_RR(res, a, b) res=pow(a,b)
+
+
 
 #endif

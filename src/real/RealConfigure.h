@@ -8,7 +8,7 @@
 
 
 // Default port is defined here
-#define PORT_TYPE MPFR_PORT
+#define PORT_TYPE DD_PORT
 
 /* 
     A flag that determines whether an original execution should be performed along with the shadow execution.
