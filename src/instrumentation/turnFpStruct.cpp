@@ -29,6 +29,7 @@ auto record = recordDecl(
 // we may ignore the case that when a record inherits another, but it does call super constructors
 auto cons = cxxConstructorDecl(isExpansionInMainFile(), hasBody(compoundStmt().bind("body")), hasDeclContext(recordDecl().bind("record"))).bind("cons"); // scan constructors
 
+auto des = cxxDestructorDecl(isExpansionInMainFile(), hasBody(compoundStmt().bind("body")), hasDeclContext(recordDecl().bind("record"))).bind("des"); 
 
 auto anyRecord = recordDecl(isExpansionInMainFile()).bind("record");
 
@@ -36,28 +37,62 @@ struct RecordInfo
 {
     struct ConstructorInfo
     {
-        const CXXConstructorDecl* consDecl;
-        const CompoundStmt* body;
+        uint64_t consDeclID;
+        SourceRange bodyRange;
         bool delegation;
+        bool isCopy;
+        bool isMove;
+    };
+    struct FieldInfo
+    {
+        std::string fieldName;
+        bool isArray;
+        int64_t size;
     };
     bool interesting;
-    const RecordDecl* record;
-    std::map<const CXXConstructorDecl*, ConstructorInfo> consInfoMap;
-    std::vector<const FieldDecl*> fields;
+    uint64_t recordID;
+    std::map<uint64_t, ConstructorInfo> consInfoMap;
+    std::vector<FieldInfo> fields;
+    
+    SourceRange destructorRange;
+    SourceLocation endLoc;
 
     ConstructorInfo& operator[](const CXXConstructorDecl* r)
     {
-        return consInfoMap[r];
+        return consInfoMap[r->getID()];
+    }
+
+    void addConstructor(const CXXConstructorDecl* r, const CompoundStmt *body, const SourceManager* manager)
+    {
+        auto &info = consInfoMap[r->getID()];
+        info.consDeclID = r->getID();
+        info.bodyRange = SourceRange(manager->getFileLoc(body->getBeginLoc()), manager->getFileLoc(body->getEndLoc()));
+        info.delegation = r->isDelegatingConstructor();
+        info.isCopy = r->isCopyConstructor();
+        info.isMove = r->isMoveConstructor();
+    }
+
+    void addField(const FieldDecl* field)
+    {
+        FieldInfo info;
+        info.fieldName = field->getNameAsString();
+        auto typePtr = field->getType().getTypePtrOrNull();
+        info.isArray = typePtr->isConstantArrayType();
+        if(info.isArray)
+        {
+            info.size = ((const ConstantArrayType*) typePtr)->getSize().getSExtValue();
+        }
+        fields.push_back(info);
     }
 };
 
 struct RecordMap
 {
-    std::map<const RecordDecl*, RecordInfo> recordInfoMap;
+    std::map<uint64_t, RecordInfo> recordInfoMap;
 
     RecordInfo& operator[](const RecordDecl* r)
     {
-        return recordInfoMap[r];
+        return recordInfoMap[r->getID()];
     }
 
     void dump()
@@ -66,8 +101,7 @@ struct RecordMap
         for(auto p : recordInfoMap)
         {
             llvm::outs() << "dump pair\t";
-            p.first->dump();
-            // llvm::outs() << p.first->getID() <<"\n";
+            llvm::outs() << p.first << "\n";
         }
     }
 };
@@ -87,27 +121,32 @@ public:
     {
         auto field = Result.Nodes.getNodeAs<FieldDecl>("field");
         auto cons = Result.Nodes.getNodeAs<CXXConstructorDecl>("cons");
+        auto des = Result.Nodes.getNodeAs<CXXDestructorDecl>("des");
         auto record = Result.Nodes.getNodeAs<RecordDecl>("record");
-
-        llvm::outs() << "record " << record->getID() <<"\n";
 
         if(field!=NULL)
         {
             auto &recordInfo = (*recordMap)[record];
-            recordInfo.record = record;
+            recordInfo.recordID = record->getID();
             recordInfo.interesting = true;
-            recordInfo.fields.push_back(field);
+            recordInfo.endLoc = record->getEndLoc();
+            recordInfo.addField(field);
             return;
         }
 
         if(cons!=NULL)
         {
             auto body = Result.Nodes.getNodeAs<CompoundStmt>("body");
-            auto &consInfo = (*recordMap)[record][cons];
-            consInfo.consDecl = cons;
-            consInfo.body = body;
-            consInfo.delegation = cons->isDelegatingConstructor();
+            auto &consInfo = (*recordMap)[record];
+            consInfo.addConstructor(cons, body, Result.SourceManager);
             return;
+        }
+
+        if(des!=NULL)
+        {
+            auto body = Result.Nodes.getNodeAs<CompoundStmt>("body");
+            auto &consInfo = (*recordMap)[record];
+            consInfo.destructorRange = SourceRange(Result.SourceManager->getFileLoc(des->getBeginLoc()), Result.SourceManager->getFileLoc(des->getEndLoc()));
         }
     } 
 };
@@ -124,13 +163,10 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result)
     {
         auto record = Result.Nodes.getNodeAs<RecordDecl>("record");
-        
-        recordMap->dump();
-
-        auto it = recordMap->recordInfoMap.find(record);
-        if(it!=recordMap->recordInfoMap.end())
+        llvm::outs() << "find " << record->getID() <<"\n";
+        auto it = recordMap->recordInfoMap.find(record->getID());
+        if(it!=recordMap->recordInfoMap.end() && it->second.interesting)
         {
-            llvm::outs() << "in\n";
             auto &rec = it->second;
             auto &consMap = it->second.consInfoMap;
             bool hasCopy = false;
@@ -138,36 +174,86 @@ public:
 
             for(auto cInfo : consMap)
             {
-                hasCopy = cInfo.second.consDecl->isCopyConstructor();
-                hasMove = cInfo.second.consDecl->isMoveConstructor();
+                hasCopy = cInfo.second.isCopy;
+                hasMove = cInfo.second.isMove;
+
                 if(cInfo.second.delegation) continue; // skip delegation
 
                 // for each fp field, generate a def at the beginning of body
-                auto body = cInfo.second.body;
+                auto &bodyRange = cInfo.second.bodyRange;
 
                 std::string code;
                 llvm::raw_string_ostream stream(code);
                 stream << "{\n";
                 for(auto field : rec.fields)
                 {
-                    auto type = field->getType();
-                    if(type.getTypePtrOrNull()->isConstantArrayType())
+                    if(field.isArray)
                     {
-                        auto arrayType = (const ConstantArrayType*) type.getTypePtrOrNull();
-                        auto size = arrayType->getSize();
-                        stream << "ARRDEF(" << field->getNameAsString() << ", ";
-                        size.print(stream, false);
-                        stream << ");\n";
+                        stream << "ARRDEF(" << field.fieldName << ", " << field.size <<");\n";
                     }
                     else
                     {
-                        stream << "DEF(" << field->getNameAsString() << ");\n";
+                        stream << "DEF(" << field.fieldName << ");\n";
                     }
                 }
                 stream.flush();
-                auto Rep = ReplacementBuilder::create(*Result.SourceManager, body->getBeginLoc(), 1, code);
+                auto Rep = ReplacementBuilder::create(*Result.SourceManager, bodyRange.getBegin(), 1, code);
                 addReplacement(Rep);
             }
+
+            if(!hasCopy)
+            {
+                record->getSourceRange().dump(*Result.SourceManager);
+                llvm::outs() << "\t No copy constructor\n";
+            }
+            if(!hasCopy)
+            {
+                record->getSourceRange().dump(*Result.SourceManager);
+                llvm::outs() << "\t No move constructor\n";
+            }
+
+            if(it->second.destructorRange.isValid())
+            {
+                std::string code;
+                llvm::raw_string_ostream stream(code);
+                stream << "{\n";
+                for(auto field : rec.fields)
+                {
+                    if(field.isArray)
+                    {
+                        stream << "ARRUNDEF(" << field.fieldName << ", " << field.size <<");\n";
+                    }
+                    else
+                    {
+                        stream << "UNDEF(" << field.fieldName << ");\n";
+                    }
+                }
+                stream.flush();
+                auto Rep = ReplacementBuilder::create(*Result.SourceManager, it->second.destructorRange.getBegin(), 1, code);
+                addReplacement(Rep);
+            }
+            else
+            {
+                std::string code;
+                llvm::raw_string_ostream stream(code);
+                stream << "virtual ~" << record->getNameAsString() << "() { // generated\n";
+                for(auto field : rec.fields)
+                {
+                    if(field.isArray)
+                    {
+                        stream << "ARRUNDEF(" << field.fieldName << ", " << field.size <<");\n";
+                    }
+                    else
+                    {
+                        stream << "UNDEF(" << field.fieldName << ");\n";
+                    }
+                }
+                stream.flush();
+                stream << "}\n}";
+                auto Rep = ReplacementBuilder::create(*Result.SourceManager, it->second.endLoc, 1, code);
+                addReplacement(Rep);
+            }
+            
         }
     }
 };
@@ -181,6 +267,7 @@ int main(int argc, const char **argv)
     RecordInfoCollector collector(&recordMap);
     recordCollector.add(record, collector);
     recordCollector.add(cons, collector);
+    recordCollector.add(des, collector);
     recordCollector.run();
 
     CodeTransformationTool tool(Options, "Instrumentation: FpStruct");

@@ -23,8 +23,10 @@ struct TestS
 
 struct TestT : public TestS
 {
-  TestT() : TestS() {}
+  TestT();
 };
+
+TestT::TestT() : TestS() {}
 
 double TestS::fp()
 {
