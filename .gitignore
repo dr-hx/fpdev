@@ -13,5 +13,4 @@ src/qd/src/Makefile
 src/qd/docs/Makefile
 src/qd/fortran/Makefile
 src/qd/tests/Makefile
-*.pdf
 *.Po
