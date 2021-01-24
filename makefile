@@ -63,7 +63,7 @@ clean:
 
 
 pass = passZero passOne passTwo passThree passClean
-trans = turnFpArith
+trans = turnFpArith turnFpStruct
 
 passObjects = $(foreach n, $(pass), bin/$(n))
 $(passObjects) : bin/% : src/normalization/%.cpp src/transformer/transformer.hpp

@@ -1,3 +1,6 @@
+#ifndef RANDOM_H
+#define RANDOM_H
+
 #include <stdlib.h>
 #include <string>
 #include <sstream>
@@ -12,3 +15,4 @@ std::string randomIdentifier(const std::string &base) {
     ss << base <<"_" << ns <<"_" << count++;
     return ss.str();
 }
+#endif

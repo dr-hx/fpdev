@@ -14,6 +14,23 @@ double fabs(double x)
 #define UB -20
 #define INC 0.1
 
+struct TestS
+{
+  TestS() : x(0) {}
+  double x;
+  double fp();
+};
+
+struct TestT : public TestS
+{
+  TestT() : TestS() {}
+};
+
+double TestS::fp()
+{
+  return x+1;
+}
+
 void testPF0()
 {
   for (double x = LB; x < UB; x = x + INC)
@@ -25,14 +42,14 @@ void testPF0()
       sum = sum + term;
       term = term * x / i;
     }
-    double ae = exp(x);
-    std::cout << ae <<"\n";
+    // double ae = exp(x);
+    std::cout << exp(x) <<"\n";
     EAST_DUMP(std::cout, sum);
     EAST_ANALYZE(std::cout, sum);
   }
 }
 
-int test(int argc, char const *argv[])
+int main(int argc, char const *argv[])
 {
 
     testPF0();
@@ -56,7 +73,7 @@ int test(int argc, char const *argv[])
     //     EAST_ANALYZE(std::cout, a);
     // } while (actual_error >= expect_error);
 
-    // return 0         ;
+    return 0;
 }
 
 // template<int Size>

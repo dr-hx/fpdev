@@ -170,7 +170,7 @@ namespace real
             RealCache cache[cacheSize];
 
         public:
-            RealType &getOrInit(const double *address)
+            RealType &getOrInit(double *address)
             {
                 int index = KEY_SHIFT(address) & mask;
                 RealCache &c = cache[index];
@@ -190,7 +190,7 @@ namespace real
                     {
                         ptr = &(map[(Key)KEY_SHIFT(address)] = *address); // init
                     }
-                    else ptr = *it;
+                    else ptr = &it->second;
 #endif
                     c.address = address;
                     c.real_ptr = ptr;

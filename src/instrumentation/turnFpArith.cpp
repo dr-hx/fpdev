@@ -95,6 +95,9 @@ auto outStmt = stmt(isExpansionInMainFile(), anyOf(breakStmt(), returnStmt(optio
 // root: parent = NULL, statement = NULL
 // function decl: parent != NULL, statement = NULL
 
+// hook constructor and destructor
+//  constructor: default+customized, copy, move
+
 struct AllocSite
 {
     const Expr* size;

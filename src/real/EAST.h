@@ -27,4 +27,8 @@ void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov)
         stream <<"Relative error is " << re << "\n";
     }
 }
+
+#define EAST_ESCAPE_BEGIN PUSHCALL(0); // push an empty frame
+#define EAST_ESCAPE_END POPCALL(); // pop the empty frame
+
 #endif
