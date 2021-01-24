@@ -25,7 +25,7 @@
 /* 
     A flag that determines whether the function is inlined.
 */
-#define INLINE_FLAGS inline
+#define INLINE_FLAGS 
 
 #define CACHE_SIZE 0x8000
 

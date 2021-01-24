@@ -507,6 +507,26 @@ namespace real
             return accumulation;
         }
     };
+
+    real::Real &&RealExp(const real::Real &r)
+    {
+        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
+        EXP_R(res.shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
+        res.shadow->originalValue = exp(r.shadow->originalValue);
+#endif
+        return std::move(res);
+    }
+
+    real::Real &&RealPow(const real::Real &a, const real::Real &b)
+    {
+        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
+        POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue);
+#if KEEP_ORIGINAL
+        res.shadow->originalValue = pow(a.shadow->originalValue, b.shadow->originalValue);
+#endif
+        return std::move(res);
+    }
 }; // namespace real
 
 #endif

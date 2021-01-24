@@ -1460,10 +1460,10 @@ protected:
                 stream << ret << " = " << *abs << "(";
                 for(int i=0, size = call->getNumArgs(); i<size; i++)
                 {
-                    stream << print(call->getArg(i), &helper);
                     if(i!=0) stream <<", ";
+                    stream << print(call->getArg(i), &helper);
                 }
-                stream <<")";
+                stream <<");";
             }
         }
         else if(funcStrategy->isPseudoFunction(callee->getNameAsString()))
@@ -1496,7 +1496,7 @@ protected:
 
             if (ret.size() == 0) {}
             else
-                stream << ret << " = " << oRet <<"; // in";
+                stream << ret << " = " << oRet <<";";
         }
 
         stream.flush();

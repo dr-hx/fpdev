@@ -83,7 +83,8 @@ static ShadowStackFrame* topFrame = &rootFrame;
 #define VARMAP VarMap::INSTANCE
 #define DEF(v) VARMAP.def(&(v))
 #define UNDEF(v) VARMAP.undef(&(v))
-#define SVAR(v) VARMAP.getOrInit(&(v))
+// #define SVAR(v) VARMAP.getOrInit(&(v))
+#define SVAR(v) VARMAP[&(v)]
 
 void ARRDEF(double* arr, uint size)
 {

@@ -40,4 +40,7 @@
 #define FMA(t, l, m, r) mpfr_fma(t, l, m, r, RND)
 #define FMS(t, l, m, r) mpfr_fms(t, l, m, r, RND)
 
+#define EXP_R(res, r) mpfr_exp(res, r, RND)
+#define POW_RR(res, a, b) mpfr_pow(res, a, b, RND) 
+
 #endif

@@ -13,15 +13,14 @@ struct FunctionTranslationStrategy
 
     FunctionTranslationStrategy()
     {
-        // buildFunctionAbstraction();
+        buildFunctionAbstraction();
     }
 
     void buildFunctionAbstraction()
     {
         abstractedFunctions.clear();
-        abstractedFunctions["j0"] = "J0";
-        abstractedFunctions["sin"] = "SIN";
-        abstractedFunctions["cos"] = "COS";
+        abstractedFunctions["pow"] = "real::RealPow";
+        abstractedFunctions["exp"] = "real::RealExp";
     }
 
     bool isTranslated(const clang::FunctionDecl* Func, const clang::SourceManager *Manager)
