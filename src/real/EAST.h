@@ -32,7 +32,7 @@ void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov)
 bool EAST_CONDITION(std::ostream& stream, double v) {return v;}
 bool EAST_CONDITION(std::ostream& stream, bool sv, bool ov)
 {
-    if(sv!=ov) stream << "Control flow divergence!\n"
+    if(sv!=ov) stream << "Control flow divergence!\n";
     return ov;
 }
 

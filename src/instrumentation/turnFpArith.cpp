@@ -36,7 +36,6 @@ auto fpAssignFpExpr = binaryOperator(isAssignmentOperator(), hasType(fpType), ha
 // how to handle struct/union
 auto sharedAddressVar = unaryOperator(hasOperatorName("&"), hasUnaryOperand(declRefExpr(isExpansionInMainFile(), to(fpVarDecl.bind("refVar")))));
 auto referencedVar = varDecl(isExpansionInMainFile(), hasType(lValueReferenceType(pointee(fpType))), hasInitializer(declRefExpr(to(fpVarDecl.bind("refVar")))));
-
 auto fpRefType = qualType(anyOf(lValueReferenceType(pointee(fpType)), pointerType(pointee(fpType))));
 auto referencedParmVar = callExpr(isExpansionInMainFile(), forEachArgumentWithParam(declRefExpr(to(fpVarDecl.bind("refVar"))), parmVarDecl(hasType(fpRefType))));
 
@@ -49,6 +48,15 @@ auto fpConsArrVarDef = declStmt(isExpansionInMainFile(), forEach(varDecl(hasType
 
 auto fpVarDefGlobal = varDecl(isExpansionInMainFile(), hasType(fpType), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
 auto fpConsArrVarDefGlobal = varDecl(isExpansionInMainFile(), hasType(constantArrayType(hasElementType(fpType))), hasGlobalStorage(), unless(isStaticLocal())).bind("def");
+
+
+// auto fpPtrVarDecl = varDecl(hasType(pointerType(pointee(fpType))));
+// auto fpPointerDef = declStmt(isExpansionInMainFile(), forEach(fpPtrVarDecl.bind("pointer-def"))).bind("def-site");
+// 1. whether this pointer is assigned to another pointer or passed to another pointer parm
+// 2. whether this pointer is bound to another reference or passed to another reference parm
+// 3. whether any element of this pointer is pointed to or passed to a pointer
+// 4. whether any element of this pointer is pointed to or passed to a reference
+
 
 
 // non local var collection
@@ -184,6 +192,13 @@ struct ArrVarDef : public VarDef
     virtual bool isSingle() const {return false;}
 };
 
+struct PtrVarDef : public VarDef
+{
+    PtrVarDef(const VarDecl *def, const Stmt *site) : VarDef(def,site) {}
+    virtual bool isDynamic() const {return true;}
+    virtual bool isSingle() const {return false;}
+};
+
 struct VarDefRecord
 {
     std::vector<VarDef *> defs;
@@ -206,7 +221,7 @@ struct VarDefRecord
         defs.push_back(vd);
         index[def] = vd;
     }
-    void insert(const VarDecl *arrdef, const Stmt *site)
+    void insertArrDef(const VarDecl *arrdef, const Stmt *site)
     {
         auto type = (const ConstantArrayType*)arrdef->getType().getTypePtr();
         VarDef *vd = NULL;
@@ -214,6 +229,12 @@ struct VarDefRecord
         else vd = new ArrVarDef(arrdef, site, type->getSize(), 1, false);
         defs.push_back(vd);
         index[arrdef] = vd;
+    }
+    void insertPtrDef(const VarDecl *def, const Stmt *site, const CallExpr *init)
+    {
+        VarDef *vd = new SingleVarDef(def, site, init);
+        defs.push_back(vd);
+        index[def] = vd;
     }
     std::map<const Stmt *, std::vector<const VarDef *>> grouping()
     {
@@ -875,7 +896,17 @@ protected:
             {
                 if (lFpVals.count((const Expr *)E) != 0)
                 {
-                    OS << "SVAR(" << print(E) << ")";
+                    if(isa<ArraySubscriptExpr>(E))
+                    {
+                        const ArraySubscriptExpr *arr = (const ArraySubscriptExpr*)E;
+                        auto base = arr->getBase();
+                        auto subscript = arr->getIdx();
+                        OS << "ARR_SVAR(" << print(base) << "," << print(subscript) << ")";
+                    }
+                    else
+                    {
+                        OS << "SVAR(" << print(E) << ")";
+                    }
                     return true;
                 }
                 if (isa<DeclRefExpr>(E))
@@ -915,6 +946,7 @@ public:
             const VarDecl *sharedVar = Result.Nodes.getNodeAs<VarDecl>("refVar");
             const VarDecl *def = Result.Nodes.getNodeAs<VarDecl>("def"); // var def
             const VarDecl *arrDef = Result.Nodes.getNodeAs<VarDecl>("arr-def");
+            const VarDecl *ptrDef = Result.Nodes.getNodeAs<VarDecl>("pointer-def");
 
             if (decl != NULL)
             {
@@ -939,10 +971,16 @@ public:
             if(arrDef !=NULL)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
-                varDefs.insert(arrDef, site);
+                varDefs.insertArrDef(arrDef, site);
                 varUse.localConstantArrayVar.insert(arrDef);
                 fillReplace(arrDef, Result);
                 return;
+            }
+
+            if(ptrDef != NULL)
+            {
+                const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
+                const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
             }
 
             if (sharedVar != NULL)
@@ -1229,7 +1267,9 @@ protected:
                         }
                     }
                     else
-                    { // var
+                    { // array var
+                        // if it is a local array, i.e., not pointer/reference to array nor any element of this array, we don't have to declare them in the map
+                        // otherwise, we declare them and allocate them
                         auto arrDef = (ArrVarDef*)v;
                         std::string varName = v->varDef->getNameAsString();
                         // we do not generate alias for array var. instead, we declare map space for them. this may cause extra runtime overhead

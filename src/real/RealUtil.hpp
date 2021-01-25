@@ -142,6 +142,9 @@ namespace real
         template <typename RealType>
         using RealPool = util::ValuePool<RealType>;
 
+        static int missedCount = 0;
+        static int arrayMissed = 0;
+
         template <typename Key, typename RealType, int cacheSize = 256, int mask = cacheSize - 1>
         class VariableMap
         {
@@ -155,7 +158,7 @@ namespace real
             static VariableMap<Key, RealType, cacheSize, mask> INSTANCE;
 
         private:
-            std::unordered_map<Key, __value_type> map;
+            std::unordered_map<uint64, __value_type> map;
 
             struct RealCache
             {
@@ -169,26 +172,98 @@ namespace real
             };
             RealCache cache[cacheSize];
 
+            struct ArraySlot
+            {
+                Key address;
+                __value_ptr *array_ptr;
+                uint length;
+                ArraySlot() : address(nullptr), length(0), array_ptr(nullptr) {}
+                ArraySlot(ArraySlot &&r)
+                {
+                    address = r.address;
+                    length = r.length;
+                    array_ptr = r.array_ptr;
+                    r.array_ptr = nullptr;
+                }
+                ArraySlot(Key address, uint size) : address(address), length(size)
+                {
+                    array_ptr = new __value_ptr[size];
+                }
+                ArraySlot &operator=(ArraySlot &&r)
+                {
+                    address = r.address;
+                    length = r.length;
+                    array_ptr = r.array_ptr;
+                    r.array_ptr = nullptr;
+                    return *this;
+                }
+                ~ArraySlot()
+                {
+                    if(array_ptr)
+                        delete[] array_ptr;
+                    array_ptr = nullptr;
+                }
+
+                __value_ptr operator[](uint id)
+                {
+                    return array_ptr[id];
+                }
+            };
+
+            struct ArraySlotCache
+            {
+                Key address;
+                ArraySlot* slot;
+                ArraySlotCache() : address(nullptr), slot(nullptr) {}
+            };
+
+            std::unordered_map<uint64, ArraySlot> arrayMap;
+            ArraySlotCache arrayCache[cacheSize];
         public:
-            RealType &getOrInit(double *address)
+            void dumpCache(int rows)
+            {
+                int empty = 0;
+                for(int i=0;i<cacheSize;i++)
+                {
+                    if(cache[i].address!=NULL)
+                    {
+                        printf("X");
+                    }
+                    else
+                    {
+                        empty++;
+                        printf("_");
+                    }
+                    if(i%rows==rows-1)
+                    {
+                        printf("\n");
+                    }
+                    
+                }
+                printf("\nIn total, %d empty slots\n", empty);
+            }
+
+            template<typename VT>
+            RealType &getOrInit(VT *address)
             {
                 int index = KEY_SHIFT(address) & mask;
                 RealCache &c = cache[index];
                 if (c.address != address)
                 {
+                    missedCount++;
 #if DELEGATE_TO_POOL
-                    RealType *&ptr = map[(Key)KEY_SHIFT(address)];
+                    RealType *&ptr = map[KEY_SHIFT(address)];
                     if(ptr==NULL)
                     {
                         ptr = RealPool<RealType>::INSTANCE.get();
                         *ptr = *address; // init
                     }
 #else
-                    auto it = map.find((Key)KEY_SHIFT(address));
+                    auto it = map.find(KEY_SHIFT(address));
                     RealType *ptr = NULL;
                     if(it==map.end())
                     {
-                        ptr = &(map[(Key)KEY_SHIFT(address)] = *address); // init
+                        ptr = &(map[KEY_SHIFT(address)] = *address); // init
                     }
                     else ptr = &it->second;
 #endif
@@ -205,13 +280,13 @@ namespace real
                 if (c.address != address)
                 {
 #if DELEGATE_TO_POOL
-                    RealType *&ptr = map[(Key)KEY_SHIFT(address)];
+                    RealType *&ptr = map[KEY_SHIFT(address)];
                     if(ptr==NULL)
                     {
                         ptr = RealPool<RealType>::INSTANCE.get();
                     }
 #else
-                    RealType *ptr = &map[(Key)KEY_SHIFT(address)];
+                    RealType *ptr = &map[KEY_SHIFT(address)];
 #endif
                     c.address = address;
                     c.real_ptr = ptr;
@@ -223,13 +298,26 @@ namespace real
                 RealType *ptr = NULL;
 #if DELEGATE_TO_POOL
                 __value_ptr vp = RealPool<RealType>::INSTANCE.get();
-                map[(Key)KEY_SHIFT(address)] = vp;
+                map[KEY_SHIFT(address)] = vp;
                 ptr = vp;
 #else
-                ptr = &map[(Key)KEY_SHIFT(address)]; // create a real with default constructor
+                ptr = &map[KEY_SHIFT(address)]; // create a real with default constructor
 #endif
                 return *ptr;
             }
+
+            template<typename VT>
+            void defArray(VT* address, uint length)
+            {
+                uint64 index = KEY_SHIFT(address);
+                auto &it = (arrayMap[index] = ArraySlot(address, length));
+                for(int i=0;i<length;i++)
+                {
+                    it.array_ptr[i] = &def(&address[i]);
+                }
+            }
+
+
             void undef(Key address)
             {
                 int index = KEY_SHIFT(address) & mask;
@@ -240,12 +328,54 @@ namespace real
                     c.real_ptr = nullptr;
                 }
 #if DELEGATE_TO_POOL
-                auto it = map.find((Key)KEY_SHIFT(address));
+                auto it = map.find(KEY_SHIFT(address));
                 RealPool<RealType>::INSTANCE.put(it->second);
                 map.erase(it);
 #else
-                map.erase((Key)KEY_SHIFT(address));
+                map.erase(KEY_SHIFT(address));
 #endif
+            }
+
+            template<typename VT>
+            void undefArray(VT* address)
+            {
+                uint64 index = KEY_SHIFT(address);
+                auto it = arrayMap.find(index);
+                if(it==arrayMap.end())
+                {
+                    std::cout<<"Warning! You are trying to remove an unrecorded array!\n";
+                    return;
+                }
+                for(int i=0;i<it->second.length;i++)
+                {
+                    undef(&address[i]);
+                }
+                arrayMap.erase(it);
+            }
+
+            template<typename VT>
+            inline RealType& getFromArray(VT* address, uint id)
+            {
+                uint64 index = KEY_SHIFT(address);
+                uint cacheIndex = index & mask;
+                ArraySlotCache &cache = arrayCache[cacheIndex];
+
+                if(cache.address!=address)
+                {
+                    arrayMissed++;
+                    auto it = arrayMap.find(index);
+                    if(it==arrayMap.end())
+                    {
+                        return (*this)[&address[id]]; // slow path
+                    }
+                    else
+                    {
+                        cache.address = address;
+                        cache.slot = &(it->second);
+                    }
+                }
+
+                return *(cache.slot->array_ptr[id]);
             }
         };
         template <typename K, typename T, int c, int m>

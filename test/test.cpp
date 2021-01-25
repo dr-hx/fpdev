@@ -54,6 +54,9 @@ void testPF0()
 int main(int argc, char const *argv[])
 {
 
+    double arr[10];
+    arr[0] = 1;
+    int *p = NULL;
     testPF0();
     // double a = 2.0;
     // double expect_error = 0.000001;

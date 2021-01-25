@@ -83,23 +83,25 @@ static ShadowStackFrame* topFrame = &rootFrame;
 #define VARMAP VarMap::INSTANCE
 #define DEF(v) VARMAP.def(&(v))
 #define UNDEF(v) VARMAP.undef(&(v))
-// #define SVAR(v) VARMAP.getOrInit(&(v))
-#define SVAR(v) VARMAP[&(v)]
+#define SVAR(v) VARMAP.getOrInit(&(v))
+#define ARR_SVAR(arr, idx) VARMAP.getFromArray(arr, idx)
+// static real::Real tmp;
+// #define SVAR(v) tmp
+
+//VARMAP[&(v)]
 
 void ARRDEF(double* arr, uint size)
 {
-    for(int i=0;i<size;i++)
-    {
-        DEF(arr[i]);
-    } 
+    VARMAP.defArray(arr, size);
 }
 
 void ARRUNDEF(double* arr, uint size)
 {
-    for(int i=0;i<size;i++)
-    {
-        UNDEF(arr[i]);
-    } 
+    // for(int i=0;i<size;i++)
+    // {
+    //     UNDEF(arr[i]);
+    // } 
+    VARMAP.undefArray(arr);
 }
 
 std::unordered_map<Addr, uint> dynArrSize;
@@ -107,17 +109,19 @@ std::unordered_map<Addr, uint> dynArrSize;
 double* DYNDEF(uint size)
 {
     double *res = new double[size];
-    dynArrSize[(Addr)KEY_SHIFT(res)] = size;
+    // dynArrSize[(Addr)KEY_SHIFT(res)] = size;
     ARRDEF(res, size);
     return res;
 }
 
 void DYNUNDEF(double * res)
 {
-    uint size = dynArrSize[(Addr)KEY_SHIFT(res)];
-    ARRUNDEF(res, size);
+    // uint size = dynArrSize[(Addr)KEY_SHIFT(res)];
+    ARRUNDEF(res, 0);
     delete res;
 }
+
+
 
 #define PUSHCALL(num) topFrame = topFrame->pushCall(num) 
 #define POPCALL() topFrame = topFrame->popCall()

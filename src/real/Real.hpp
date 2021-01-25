@@ -433,6 +433,46 @@ namespace real
             return *this;
         }
 
+        INLINE_FLAGS Real &operator+=(Real &&r)
+        {
+            ADD_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
+            shadow->originalValue += r.shadow->originalValue;
+#endif
+            RealPool<Real>::INSTANCE.put(&r);
+            return *this;
+        }
+
+        INLINE_FLAGS Real &operator-=(Real &&r)
+        {
+            SUB_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
+            shadow->originalValue -= r.shadow->originalValue;
+#endif
+            RealPool<Real>::INSTANCE.put(&r);
+            return *this;
+        }
+
+        INLINE_FLAGS Real &operator*=(Real &&r)
+        {
+            MUL_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
+            shadow->originalValue *= r.shadow->originalValue;
+#endif
+            RealPool<Real>::INSTANCE.put(&r);
+            return *this;
+        }
+
+        INLINE_FLAGS Real &operator/=(Real &&r)
+        {
+            DIV_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
+#if KEEP_ORIGINAL
+            shadow->originalValue /= r.shadow->originalValue;
+#endif
+            RealPool<Real>::INSTANCE.put(&r);
+            return *this;
+        }
+
         INLINE_FLAGS Real &operator+=(const double &r)
         {
             ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
@@ -475,25 +515,130 @@ namespace real
             return os;
         }
 
+        // Relational operator
+
         INLINE_FLAGS friend bool operator<(const Real &l, const Real &r)
         {
             return LESS_RR(l.shadow->shadowValue, r.shadow->shadowValue);
         }
+        INLINE_FLAGS friend bool operator<(Real &&l, const Real &r)
+        {
+            bool ret = LESS_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator<(const Real &l, Real &&r)
+        {
+            bool ret = LESS_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator<(Real &&l, Real &&r)
+        {
+            bool ret = LESS_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+
         INLINE_FLAGS friend bool operator<=(const Real &l, const Real &r)
         {
             return LESSEQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
         }
+        INLINE_FLAGS friend bool operator<=(Real &&l, const Real &r)
+        {
+            bool ret = LESSEQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator<=(const Real &l, Real &&r)
+        {
+            bool ret = LESSEQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator<=(Real &&l, Real &&r)
+        {
+            bool ret = LESSEQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+
+
+
         INLINE_FLAGS friend bool operator==(const Real &l, const Real &r)
         {
             return EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
         }
+        INLINE_FLAGS friend bool operator==(Real &&l, const Real &r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator==(const Real &l, Real &&r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator==(Real &&l, Real &&r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+
+
         INLINE_FLAGS friend bool operator>(const Real &l, const Real &r)
         {
             return GREATER_RR(l.shadow->shadowValue, r.shadow->shadowValue);
         }
-        INLINE_FLAGS friend bool operator<=(const Real &l, const Real &r)
+        INLINE_FLAGS friend bool operator>(Real &&l, const Real &r)
+        {
+            bool ret = GREATER_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator>(const Real &l, Real &&r)
+        {
+            bool ret = GREATER_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator>(Real &&l, Real &&r)
+        {
+            bool ret = GREATER_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+
+
+        INLINE_FLAGS friend bool operator>=(const Real &l, const Real &r)
         {
             return GREATEREQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+        }
+        INLINE_FLAGS friend bool operator>=(Real &&l, const Real &r)
+        {
+            bool ret = GREATEREQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator>=(const Real &l, Real &&r)
+        {
+            bool ret = GREATEREQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
+        }
+        INLINE_FLAGS friend bool operator>=(Real &&l, Real &&r)
+        {
+            bool ret = GREATEREQ_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return ret;
         }
     };
 
