@@ -1,5 +1,8 @@
 #ifndef REAL_CONFIGURE_HPP
 #define REAL_CONFIGURE_HPP
+/*
+Low level instructions for instrumentation
+*/
 #include "RealConfigure.h"
 #include "Real.hpp"
 
@@ -121,7 +124,13 @@ void DYNUNDEF(double * res)
     delete res;
 }
 
+#define PC(id) ERROR_STATE.moveTo(id)
 
+#define CALCERR(svar, ovar) real::Real::CalcError(svar, ovar)
+
+#if TRACK_ERROR
+#define UPDERR(svar, ovar) real::Real::UpdError(svar, ovar)
+#endif
 
 #define PUSHCALL(num) topFrame = topFrame->pushCall(num) 
 #define POPCALL() topFrame = topFrame->popCall()

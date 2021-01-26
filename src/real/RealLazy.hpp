@@ -3,6 +3,10 @@
 #include "RealConfigure.h"
 #include "ShadowValue.hpp"
 
+/*
+The code is current out of date.
+*/
+
 namespace real
 {
     namespace lazy

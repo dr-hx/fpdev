@@ -1332,7 +1332,7 @@ protected:
                             stream << "/" << def->factor << ");\n";
                         }
                         else{
-                            stream <<"// leave "<< v->decl->getNameAsString() << "\n";
+                            // stream <<"// leave "<< v->decl->getNameAsString() << "\n";
                         }
                     }
                     // stream << "*/\n"; // for debugging
@@ -1552,9 +1552,9 @@ protected:
         {
             stream << print(call, &helper) << "";
         }
-        else if(funcName == "EAST_ANALYZE" || funcName == "EAST_CONDITION")
+        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
         {
-            stream << "EAST_ANALYZE("
+            stream << funcName << "("
                    << print(call->getArg(0), &helper)
                    <<","
                    << print(call->getArg(1), &helper)

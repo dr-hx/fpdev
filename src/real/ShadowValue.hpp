@@ -14,13 +14,125 @@
 
 namespace real
 {
+    // error state is related to memory
+    struct SymbolicVarError
+    {
+        double maxRelativeError;
+        uint64 errorCausingCalculationID;
+
+        void update(const SymbolicVarError& r)
+        {
+            if(maxRelativeError < r.maxRelativeError)
+            {
+                maxRelativeError = r.maxRelativeError;
+                errorCausingCalculationID = r.errorCausingCalculationID;
+            }
+        }
+
+        void update(double re, uint id)
+        {
+            if(maxRelativeError < re)
+            {
+                maxRelativeError = re;
+                errorCausingCalculationID = id;
+            }
+        }
+    };
+
+    struct CalculationError
+    {
+        double maxRelativeError;
+        std::vector<SymbolicVarError> inputVars;
+
+        CalculationError() : maxRelativeError(0) {}
+
+        void updateSymbolicVarError(const SymbolicVarError& var, uint id)
+        {
+            if(inputVars.size() == id)
+            {
+                inputVars.push_back(var);
+                return; // short-cut
+            }
+            
+            if(inputVars.size() <= id)
+            {
+                inputVars.reserve(id<32 ? 32 : (id + id/2));
+                inputVars.resize(id+1);
+            }
+
+            inputVars[id].update(var);
+        }
+    };
+
+    struct ProgramErrorState
+    {
+        uint64 programCounter;
+        uint symbolicVarId;
+        const char **locationStrings;
+        CalculationError* errors;
+
+        ProgramErrorState() : programCounter(0), symbolicVarId(0), locationStrings(NULL),errors(NULL) {}
+        ~ProgramErrorState()
+        {
+            if(errors)
+            {
+                delete[] errors;
+                errors = NULL;
+            }
+        }
+
+        void initErrors(uint64 count)
+        {
+            errors = new CalculationError[count];
+        }
+
+        void setLocationStrings(const char **ls)
+        {
+            locationStrings = ls;
+        }
+
+        void moveTo(uint64 c)
+        {
+            programCounter = c;
+            symbolicVarId = 0;
+        }
+
+        void setError(SymbolicVarError &var, double re)
+        {
+            var.maxRelativeError = re;
+            var.errorCausingCalculationID = programCounter;
+        }
+
+        void updateError(SymbolicVarError &var, double re)
+        {
+            var.update(re, programCounter);
+        }
+
+        void updateSymbolicVarError(const SymbolicVarError &var)
+        {
+            if(errors)
+            {
+                errors[programCounter].updateSymbolicVarError(var, symbolicVarId++);
+            }
+        }
+    };
+
+#if TRACK_ERROR
+static ProgramErrorState programErrorState;
+
+#define ERROR_STATE real::programErrorState
+#endif
+
+
     struct ShadowState
     {
 #if KEEP_ORIGINAL
         double originalValue;
 #endif
         HP_TYPE shadowValue;
-        double avgRelativeError;
+#if TRACK_ERROR
+        SymbolicVarError error;
+#endif
     };
     typedef ShadowState *sval_ptr;
 
@@ -36,7 +148,10 @@ namespace real
             CLEAR(v.shadowValue);
         }
     };
-
     using ShadowPool = util::ValuePool<ShadowState, 128, ShadowSlotInitializer<120>>;
+
+
 };
+
+
 #endif

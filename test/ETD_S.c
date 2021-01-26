@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < N; i++)
 	{
 		printf("C[%d]=%e\n", i, C[i]);
-		EAST_ANALYZE(std::cout, C[i]);
+		EAST_DUMP_ERROR(std::cout, C[i]);
 	}
 	end = clock();
 	totaltime = (end - start) / CLOCKS_PER_SEC;

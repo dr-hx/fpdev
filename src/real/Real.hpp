@@ -33,6 +33,37 @@ namespace real
     public:
         sval_ptr shadow;
 
+    static inline double CalcError(const Real &svar, double ovar)
+    {
+        double dsv = TO_DOUBLE(svar.shadow->shadowValue);
+        if (dsv == 0) {
+            if(ovar==0) return 0;
+            dsv = 1.1E-16;
+        }
+        double re = (dsv - ovar) / dsv;
+        long *pre = (long *)&re;
+        *pre &= 0x7FFFFFFFFFFFFFFF;
+        return re;
+    }
+    #if TRACK_ERROR
+    static inline void UpdError(const real::Real &svar, double ovar)
+    {
+        double re = real::Real::CalcError(svar, ovar);
+        if(re>1E-5) 
+            assert(false);
+        ERROR_STATE.updateError(svar.shadow->error, re);
+    }
+    #define INTERNAL_INIT_ERROR(v) ERROR_STATE.setError((v).shadow->error,0)
+#if ACTIVE_TRACK_ERROR
+    #define INTERNAL_ESTIMATE_ERROR(v) UpdError(v, (v).shadow->originalValue)
+#else
+    #define INTERNAL_ESTIMATE_ERROR(v)
+#endif
+#else 
+    #define INTERNAL_ESTIMATE_ERROR(v)  
+    #define INTERNAL_INIT_ERROR(v) 
+#endif
+
     public:
         Real()
         {
@@ -45,7 +76,9 @@ namespace real
 #if KEEP_ORIGINAL
             shadow->originalValue = v;
 #endif
-            shadow->avgRelativeError = 0;
+#if TRACK_ERROR
+            ERROR_STATE.setError(shadow->error, 0);
+#endif
         }
 
         Real(Real &&r) noexcept
@@ -57,12 +90,14 @@ namespace real
 
         Real(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.setError(shadow->error, r.shadow->error.maxRelativeError);
+#endif
             shadow = ShadowPool::INSTANCE.get();
             ASSIGN(shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue = r.shadow->originalValue;
 #endif
-            shadow->avgRelativeError = 0;
         }
 
         ~Real()
@@ -76,6 +111,9 @@ namespace real
 
         INLINE_FLAGS Real &&operator-()
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_DR(res.shadow->shadowValue, 0, this->shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -86,6 +124,10 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator+(const Real &l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -96,6 +138,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator+(Real &&l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             ADD_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             l.shadow->originalValue += r.shadow->originalValue;
@@ -105,6 +150,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator+(const Real &l, Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             ADD_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             r.shadow->originalValue += l.shadow->originalValue;
@@ -124,6 +172,10 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator-(const Real &l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -134,6 +186,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator-(Real &&l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             SUB_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             l.shadow->originalValue -= r.shadow->originalValue;
@@ -151,6 +206,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator-(const Real &l, Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             SUB_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             r.shadow->originalValue = l.shadow->originalValue - r.shadow->originalValue;
@@ -159,6 +217,10 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator*(const Real &l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -169,6 +231,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator*(Real &&l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             MUL_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             l.shadow->originalValue *= r.shadow->originalValue;
@@ -178,6 +243,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator*(const Real &l, Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             MUL_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             r.shadow->originalValue *= l.shadow->originalValue;
@@ -197,6 +265,10 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator/(const Real &l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_RR(res.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -207,6 +279,9 @@ namespace real
 
         INLINE_FLAGS friend Real &&operator/(Real &&l, const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             DIV_RR(l.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             l.shadow->originalValue /= r.shadow->originalValue;
@@ -224,6 +299,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator/(const Real &l, Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             DIV_RR(r.shadow->shadowValue, l.shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             r.shadow->originalValue = l.shadow->originalValue / r.shadow->originalValue;
@@ -241,6 +319,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator+(const Real &l, const double i)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -258,6 +339,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator+(const double i, const Real &l)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             ADD_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -276,6 +360,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator-(const Real &l, const double i)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -293,6 +380,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator-(const double i, const Real &l)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             SUB_DR(res.shadow->shadowValue, i, l.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -311,6 +401,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator*(const Real &l, const double i)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -328,6 +421,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator*(const double i, const Real &l)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             MUL_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -346,6 +442,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator/(const Real &l, const double i)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_RD(res.shadow->shadowValue, l.shadow->shadowValue, i);
 #if KEEP_ORIGINAL
@@ -363,6 +462,9 @@ namespace real
         }
         INLINE_FLAGS friend Real &&operator/(const double i, const Real &l)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(l.shadow->error);
+#endif
             Real &res = *RealPool<Real>::INSTANCE.get();
             DIV_DR(res.shadow->shadowValue, i, l.shadow->shadowValue);
 #if KEEP_ORIGINAL
@@ -373,10 +475,14 @@ namespace real
 
         INLINE_FLAGS Real &operator=(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             ASSIGN(shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue = r.shadow->originalValue;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
         INLINE_FLAGS Real &operator=(Real &&r)
@@ -386,6 +492,7 @@ namespace real
             shadow->originalValue = r.shadow->originalValue;
 #endif
             RealPool<Real>::INSTANCE.put(&r);
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
         INLINE_FLAGS Real &operator=(const double r)
@@ -394,118 +501,171 @@ namespace real
 #if KEEP_ORIGINAL
             shadow->originalValue = r;
 #endif
+            INTERNAL_INIT_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator+=(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             ADD_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue += r.shadow->originalValue;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator-=(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             SUB_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue -= r.shadow->originalValue;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator*=(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             MUL_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue *= r.shadow->originalValue;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator/=(const Real &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+            ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
             DIV_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue /= r.shadow->originalValue;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator+=(Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             ADD_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue += r.shadow->originalValue;
 #endif
             RealPool<Real>::INSTANCE.put(&r);
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator-=(Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             SUB_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue -= r.shadow->originalValue;
 #endif
             RealPool<Real>::INSTANCE.put(&r);
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator*=(Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             MUL_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue *= r.shadow->originalValue;
 #endif
             RealPool<Real>::INSTANCE.put(&r);
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator/=(Real &&r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             DIV_RR(this->shadow->shadowValue, this->shadow->shadowValue, r.shadow->shadowValue);
 #if KEEP_ORIGINAL
             shadow->originalValue /= r.shadow->originalValue;
 #endif
             RealPool<Real>::INSTANCE.put(&r);
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator+=(const double &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             ADD_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
             shadow->originalValue += r;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator-=(const double &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             SUB_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
             shadow->originalValue -= r;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator*=(const double &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             MUL_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
             shadow->originalValue *= r;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
         INLINE_FLAGS Real &operator/=(const double &r)
         {
+#if TRACK_ERROR
+            ERROR_STATE.updateSymbolicVarError(shadow->error);
+#endif
             DIV_RD(this->shadow->shadowValue, this->shadow->shadowValue, r);
 #if KEEP_ORIGINAL
             shadow->originalValue /= r;
 #endif
+            INTERNAL_ESTIMATE_ERROR(*this);
             return *this;
         }
 
@@ -591,6 +751,30 @@ namespace real
             return ret;
         }
 
+        INLINE_FLAGS friend bool operator!=(const Real &l, const Real &r)
+        {
+            return !(EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue));
+        }
+        INLINE_FLAGS friend bool operator!=(Real &&l, const Real &r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            return !ret;
+        }
+        INLINE_FLAGS friend bool operator!=(const Real &l, Real &&r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&r);
+            return !ret;
+        }
+        INLINE_FLAGS friend bool operator!=(Real &&l, Real &&r)
+        {
+            bool ret = EQUAL_RR(l.shadow->shadowValue, r.shadow->shadowValue);
+            RealPool<Real>::INSTANCE.put(&l);
+            RealPool<Real>::INSTANCE.put(&r);
+            return !ret;
+        }
+
 
         INLINE_FLAGS friend bool operator>(const Real &l, const Real &r)
         {
@@ -674,24 +858,121 @@ namespace real
         }
     };
 
+
+#if KEEP_ORIGINAL
+#define EXPBODY \
+    EXP_R(res.shadow->shadowValue, r.shadow->shadowValue); \
+    res.shadow->originalValue = exp(r.shadow->originalValue);\
+    return std::move(res)
+#else
+#define EXPBODY \
+    EXP_R(res.shadow->shadowValue, r.shadow->shadowValue); \
+    return std::move(res)
+#endif
+
     real::Real &&RealExp(const real::Real &r)
     {
-        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
-        EXP_R(res.shadow->shadowValue, r.shadow->shadowValue);
-#if KEEP_ORIGINAL
-        res.shadow->originalValue = exp(r.shadow->originalValue);
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(r.shadow->error);
 #endif
-        return std::move(res);
+        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
+        EXPBODY;
     }
+    real::Real &&RealExp(real::Real &&r)
+    {
+        real::Real &res = r;
+        EXPBODY;
+    }
+    real::Real &&RealExp(double dr)
+    {
+        real::Real &r = *real::RealPool<real::Real>::INSTANCE.get();
+        real::Real &res = r;
+        r = dr;
+        EXPBODY;
+    }
+    
+
+#if KEEP_ORIGINAL
+#define POWBODY \
+    POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue); \
+    res.shadow->originalValue = pow(a.shadow->originalValue, b.shadow->originalValue); \
+    return std::move(res)
+#define POWBODY2(x) \
+    POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue); \
+    res.shadow->originalValue = pow(a.shadow->originalValue, b.shadow->originalValue); \
+    real::RealPool<real::Real>::INSTANCE.put(&x); \
+    return std::move(res)
+#else
+#define POWBODY \
+    POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue); \
+    return std::move(res)
+#define POWBODY2(x) \
+    POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue); \
+    real::RealPool<real::Real>::INSTANCE.put(&x); \
+    return std::move(res)
+#endif
 
     real::Real &&RealPow(const real::Real &a, const real::Real &b)
     {
-        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
-        POW_RR(res.shadow->shadowValue, a.shadow->shadowValue, b.shadow->shadowValue);
-#if KEEP_ORIGINAL
-        res.shadow->originalValue = pow(a.shadow->originalValue, b.shadow->originalValue);
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(a.shadow->error);
+        ERROR_STATE.updateSymbolicVarError(b.shadow->error);
 #endif
-        return std::move(res);
+        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
+        POWBODY;
+    }
+    real::Real &&RealPow(real::Real &&a, const real::Real &b)
+    {
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(b.shadow->error);
+#endif
+        real::Real &res = a;
+        POWBODY;
+    }
+    real::Real &&RealPow(const real::Real &a, real::Real &&b)
+    {
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(a.shadow->error);
+#endif
+        real::Real &res = b;
+        POWBODY;
+    }
+    real::Real &&RealPow(real::Real &&a, real::Real &&b)
+    {
+        real::Real &res = a;
+        POWBODY2(b);
+    }
+    real::Real &&RealPow(const real::Real &a, double db)
+    {
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(a.shadow->error);
+#endif
+        real::Real &b = *real::RealPool<real::Real>::INSTANCE.get();
+        real::Real &res = b;
+        b = db;
+        POWBODY;
+    }
+    real::Real &&RealPow(double da, const real::Real &b)
+    {
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(b.shadow->error);
+#endif
+        real::Real &a = *real::RealPool<real::Real>::INSTANCE.get();
+        real::Real &res = a;
+        a = da;
+        POWBODY;
+    }
+    real::Real &&RealPow(real::Real &&a, double db)
+    {
+        real::Real &res = a;
+        real::Real b(db);
+        POWBODY;
+    }
+    real::Real &&RealPow(double da, real::Real &&b)
+    {
+        real::Real a(da);
+        real::Real &res = b;
+        POWBODY;
     }
 }; // namespace real
 

@@ -9,15 +9,10 @@ void EAST_DUMP(std::ostream& stream, const SVal &d) {
     stream << d << "\n";
 }
 
-void EAST_ANALYZE(std::ostream& stream, double d) {stream << d <<"\n";} // pseudo function
+void EAST_DUMP_ERROR(std::ostream& stream, double d) {stream << d <<"\n";} // pseudo function
 
-void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov) 
+void logError(std::ostream& stream, const SVal &sv, double re) 
 {
-    double dsv = TO_DOUBLE(sv.shadow->shadowValue);
-    if(dsv==0) dsv = 1.1E-16;
-    double re = (dsv-ov)/dsv;
-    long *pre = (long*)&re;
-    *pre &= 0x7FFFFFFFFFFFFFFF;
     EAST_DUMP(stream, sv);
     if(re==0)
     {
@@ -27,6 +22,28 @@ void EAST_ANALYZE(std::ostream& stream, const SVal &sv, double ov)
     {
         stream <<"Relative error is " << re << "\n";
     }
+}
+
+void EAST_DUMP_ERROR(std::ostream& stream, const SVal &sv, double ov) 
+{
+    double re = CALCERR(sv, ov);
+    logError(stream, sv, re);
+}
+
+void EAST_ANALYZE_ERROR(std::ostream& stream, double d) {} // pseudo function
+void EAST_ANALYZE_ERROR(std::ostream& stream, const SVal &sv, double ov)
+{
+#if TRACK_ERROR
+#if ACTIVE_TRACK_ERROR
+    // we do nothing because the error has been tracked automatically
+#else
+    SVal::UpdError(sv, ov);
+#endif
+    double re = sv.shadow->error.maxRelativeError;
+    logError(stream, sv, re);
+#else
+    EAST_DUMP_ERROR(stream, sv, ov);
+#endif
 }
 
 bool EAST_CONDITION(std::ostream& stream, double v) {return v;}
