@@ -940,7 +940,7 @@ public:
     }
     virtual void run(const MatchFinder::MatchResult &Result)
     {
-        
+
         {
             const VarDecl *decl = Result.Nodes.getNodeAs<VarDecl>("varDecl"); // var decl, single double var only
             const VarDecl *sharedVar = Result.Nodes.getNodeAs<VarDecl>("refVar");
@@ -1136,12 +1136,12 @@ public:
         if (manager != NULL)
         {
             RealVarPrinterHelper helper(varUse, lFpVals);
-            std::string header;
-            llvm::raw_string_ostream header_stream(header);
+            // std::string header;
+            // llvm::raw_string_ostream header_stream(header);
 
-            { // add hearder
-                header_stream << "#include <real/ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
-            }
+            // { // add hearder
+            //     header_stream << "#include <real/ShadowExecution.hpp> // you must put ShadowExecution.hpp into a library path\n";
+            // }
 
             // Var and scope construction
             doConstructVarScope(helper);
@@ -1156,11 +1156,11 @@ public:
                 llvm::outs() << "scope tree checks passed\n";
             }
 
-            {
-                header_stream.flush();
-                Replacement rep = ReplacementBuilder::create(filename, 0, 0, header);
-                addReplacement(rep);
-            }
+            // {
+            //     header_stream.flush();
+            //     Replacement rep = ReplacementBuilder::create(filename, 0, 0, header);
+            //     addReplacement(rep);
+            // }
 
             doDefReals(helper);
 
@@ -1552,7 +1552,7 @@ protected:
         {
             stream << print(call, &helper) << "";
         }
-        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
+        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION" || funcName == "EAST_ANALYZE_ERROR")
         {
             stream << funcName << "("
                    << print(call->getArg(0), &helper)
@@ -1640,7 +1640,6 @@ public:
             strategy->translatedFunctions.insert(loc);
         }
     }
-
 };
 
 

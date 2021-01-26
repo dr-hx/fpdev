@@ -6,7 +6,10 @@
 #include <sstream>
 #include <sys/time.h>
 
-static int count = 0;
+typedef unsigned int uint32;
+typedef unsigned long uint64;
+
+static uint64 count = 0;
 std::string randomIdentifier(const std::string &base) {
     timeval time;
     gettimeofday(&time, NULL);

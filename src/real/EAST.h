@@ -11,23 +11,50 @@ void EAST_DUMP(std::ostream& stream, const SVal &d) {
 
 void EAST_DUMP_ERROR(std::ostream& stream, double d) {stream << d <<"\n";} // pseudo function
 
-void logError(std::ostream& stream, const SVal &sv, double re) 
-{
-    EAST_DUMP(stream, sv);
-    if(re==0)
-    {
-        stream <<"Relative error is smaller than 10^-16\n";
-    }
-    else
-    {
-        stream <<"Relative error is " << re << "\n";
-    }
-}
-
 void EAST_DUMP_ERROR(std::ostream& stream, const SVal &sv, double ov) 
 {
+    stream << "[ERROR]\t" << "Shadow value is ";
+    EAST_DUMP(stream, sv);
+#if TRACK_ERROR
+    if(sv.shadow->error.maxRelativeError==0)
+    {
+        stream <<"[ERROR]\t" << "MRE < 10^-16\n";
+    }
+    else 
+    {
+        stream <<"[ERROR]\t" << "MRE is "<<sv.shadow->error.maxRelativeError<<", caused by "<< ERROR_STATE.locationStrings[sv.shadow->error.errorCausingCalculationID] <<"\n";
+    }
+    if(sv.shadow->error.relativeErrorOfLastCheck==0)
+    {
+        stream <<"[ERROR]\t" << "LRE < 10^-16\n";
+    }
+    else 
+    {
+        stream <<"[ERROR]\t" << "LRE is "<<sv.shadow->error.relativeErrorOfLastCheck<<", caused by "<< ERROR_STATE.locationStrings[sv.shadow->error.errorCausingCalculationIDOfLastCheck] <<"\n";
+    }
+#if ACTIVE_TRACK_ERROR
     double re = CALCERR(sv, ov);
-    logError(stream, sv, re);
+    if(re==0)
+    {
+        stream <<"[ERROR]\t" << "Current RE < 10^-16\n";
+    }
+    else 
+    {
+        stream <<"[ERROR]\t" << "Current RE is "<<re<<"\n";
+    }
+#endif
+#else
+    double re = CALCERR(sv, ov);
+    if(re==0)
+    {
+        stream <<"[ERROR]\t" << "Current RE < 10^-16\n";
+    }
+    else 
+    {
+        stream <<"[ERROR]\t" << "Current RE is "<<re<<"\n";
+    }
+#endif
+
 }
 
 void EAST_ANALYZE_ERROR(std::ostream& stream, double d) {} // pseudo function
@@ -35,12 +62,15 @@ void EAST_ANALYZE_ERROR(std::ostream& stream, const SVal &sv, double ov)
 {
 #if TRACK_ERROR
 #if ACTIVE_TRACK_ERROR
-    // we do nothing because the error has been tracked automatically
-#else
+#if DEBUG_INTERNAL
+    if(ov != sv.shadow->originalValue)
+    {
+        assert(false);
+    }
+#endif
+#else // track error passively
     SVal::UpdError(sv, ov);
 #endif
-    double re = sv.shadow->error.maxRelativeError;
-    logError(stream, sv, re);
 #else
     EAST_DUMP_ERROR(stream, sv, ov);
 #endif

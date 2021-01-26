@@ -120,6 +120,7 @@
                 "-I/usr/local/opt/llvm/include/",
                 "-I${workspaceFolder}/src/",
                 "-I${workspaceFolder}/src/qd/include",
+                "-I${fileDirname}",
                 "-g",
                 "${file}",
                 "-L/usr/local/opt/llvm/lib",

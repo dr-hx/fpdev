@@ -8,7 +8,7 @@
 
 
 // Default port is defined here
-#define PORT_TYPE MPFR_PORT
+#define PORT_TYPE DD_PORT
 
 
 /* 
@@ -46,6 +46,5 @@
 #define INLINE_FLAGS inline
 
 #define CACHE_SIZE 0x8000
-
 
 #endif

@@ -1,4 +1,4 @@
-vpath %.cpp src src/normalization src/transformer src/instrumentation
+vpath %.cpp src src/normalization src/transformer src/instrumentation src/annotation
 vpath %h src/util
 vpath %hpp src/util src/transformer
 
@@ -64,6 +64,7 @@ clean:
 
 pass = passZero passOne passTwo passThree passClean
 trans = turnFpArith turnFpStruct
+annots = sourceAnnotation
 
 passObjects = $(foreach n, $(pass), bin/$(n))
 $(passObjects) : bin/% : src/normalization/%.cpp src/transformer/transformer.hpp
@@ -73,14 +74,22 @@ transObjects = $(foreach n, $(trans), bin/$(n))
 $(transObjects) : bin/% : src/instrumentation/%.cpp src/transformer/transformer.hpp src/instrumentation/functionTranslation.hpp
 	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
+annotationObjects = $(foreach n, $(annots), bin/$(n))
+$(annotationObjects) : bin/% : src/annotation/%.cpp src/transformer/transformer.hpp
+	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-normalization : $(passObjects)
+normalization : $(annotationObjects) $(passObjects)
 instrumentation : normalization $(transObjects)
 
 
 testnorm : normalization
 	rm -r ${TEST_DERIVED_BASE}; mkdir ${TEST_DERIVED_BASE}; cp ${TEST_BASE}/${fn} ${TEST_DERIVED_BASE}/${fn}
 	${LLVM_BIN_PATH}/clang-tidy ${TEST_DERIVED_BASE}/${fn} -fix -checks="readability-braces-around-statements" $(EXTRA_FLAGS)
+	for n in $(annotationObjects); \
+	do \
+		$$n ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\
+	done
+	cp ./RunConfigure.h ${TEST_DERIVED_BASE}/RunConfigure.h
 	for n in $(passObjects); \
 	do \
 		$$n ${TEST_DERIVED_BASE}/${fn} $(EXTRA_FLAGS);\

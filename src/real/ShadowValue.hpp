@@ -18,10 +18,14 @@ namespace real
     struct SymbolicVarError
     {
         double maxRelativeError;
+        double relativeErrorOfLastCheck;
         uint64 errorCausingCalculationID;
+        uint64 errorCausingCalculationIDOfLastCheck;
 
         void update(const SymbolicVarError& r)
         {
+            relativeErrorOfLastCheck = r.relativeErrorOfLastCheck;
+            errorCausingCalculationIDOfLastCheck = r.errorCausingCalculationIDOfLastCheck;
             if(maxRelativeError < r.maxRelativeError)
             {
                 maxRelativeError = r.maxRelativeError;
@@ -31,6 +35,8 @@ namespace real
 
         void update(double re, uint id)
         {
+            relativeErrorOfLastCheck = re;
+            errorCausingCalculationIDOfLastCheck = id;
             if(maxRelativeError < re)
             {
                 maxRelativeError = re;
@@ -42,9 +48,10 @@ namespace real
     struct CalculationError
     {
         double maxRelativeError;
+        double relativeErrorOfLastCheck;
         std::vector<SymbolicVarError> inputVars;
 
-        CalculationError() : maxRelativeError(0) {}
+        CalculationError() : maxRelativeError(0),relativeErrorOfLastCheck(0) {}
 
         void updateSymbolicVarError(const SymbolicVarError& var, uint id)
         {
@@ -71,7 +78,14 @@ namespace real
         const char **locationStrings;
         CalculationError* errors;
 
-        ProgramErrorState() : programCounter(0), symbolicVarId(0), locationStrings(NULL),errors(NULL) {}
+        ProgramErrorState() : programCounter(0), symbolicVarId(0), locationStrings(NULL),errors(NULL) 
+        {
+#ifdef PC_COUNT
+            std::cout<<"Error State Inited!\n";
+            initErrors(PC_COUNT);
+            setLocationStrings(PATH_STRINGS);
+#endif
+        }
         ~ProgramErrorState()
         {
             if(errors)
@@ -100,7 +114,9 @@ namespace real
         void setError(SymbolicVarError &var, double re)
         {
             var.maxRelativeError = re;
+            var.relativeErrorOfLastCheck = re;
             var.errorCausingCalculationID = programCounter;
+            var.errorCausingCalculationIDOfLastCheck = programCounter;
         }
 
         void updateError(SymbolicVarError &var, double re)

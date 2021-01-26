@@ -49,8 +49,8 @@ namespace real
     static inline void UpdError(const real::Real &svar, double ovar)
     {
         double re = real::Real::CalcError(svar, ovar);
-        if(re>1E-5) 
-            assert(false);
+        // if(re>1E-5) 
+        //     assert(false);
         ERROR_STATE.updateError(svar.shadow->error, re);
     }
     #define INTERNAL_INIT_ERROR(v) ERROR_STATE.setError((v).shadow->error,0)
