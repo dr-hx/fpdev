@@ -255,12 +255,13 @@ int main(int argc, char *argv[])
 		sumbeta = sumbeta_a = sumbeta_b = sumbeta_d = 0.0;
 	}
 
+	end = clock();
 	for (i = 0; i < N; i++)
 	{
 		printf("C[%d]=%e\n", i, C[i]);
 		EAST_DUMP_ERROR(std::cout, C[i]);
 	}
-	end = clock();
+	EAST_DRAW_ERROR("C0", C[0], "/Volumes/Macintosh HD Data/Haskel IDE/fpdev/output.dot");
 	totaltime = (end - start) / CLOCKS_PER_SEC;
 	//for(i=0;i<N;i++)
 	//printf("C[%d] = %e\n",i,C[i]);

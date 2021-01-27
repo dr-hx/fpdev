@@ -77,6 +77,7 @@
         "*.inc": "cpp",
         "__cxx_version": "cpp",
         "version": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "fstream": "cpp"
     }
 }

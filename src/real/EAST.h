@@ -86,4 +86,12 @@ bool EAST_CONDITION(std::ostream& stream, bool sv, bool ov)
 #define EAST_ESCAPE_BEGIN PUSHCALL(0); // push an empty frame
 #define EAST_ESCAPE_END POPCALL(); // pop the empty frame
 
+void EAST_DRAW_ERROR(std::string name, double v, std::string file) {}
+void EAST_DRAW_ERROR(std::string name, const SVal &sv, std::string file) 
+{
+#if TRACK_ERROR
+    ERROR_STATE.visualizeTo(file, sv.shadow->error, name);
+#endif
+}
+
 #endif

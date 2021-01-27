@@ -1,5 +1,9 @@
 #ifndef SHADOW_VALUE_HPP
 #define SHADOW_VALUE_HPP
+#include <set>
+#include <sstream>
+#include <string>
+#include <fstream>
 #include "RealConfigure.h"
 
 #if  PORT_TYPE == DD_PORT
@@ -76,29 +80,38 @@ namespace real
         uint64 programCounter;
         uint symbolicVarId;
         const char **locationStrings;
-        CalculationError* errors;
 
-        ProgramErrorState() : programCounter(0), symbolicVarId(0), locationStrings(NULL),errors(NULL) 
+#ifdef PC_COUNT
+        CalculationError errors[PC_COUNT];
+#else
+        CalculationError *errors;
+#endif
+        ProgramErrorState() : programCounter(0), symbolicVarId(0), locationStrings(NULL)
         {
 #ifdef PC_COUNT
             std::cout<<"Error State Inited!\n";
-            initErrors(PC_COUNT);
             setLocationStrings(PATH_STRINGS);
+#else
+            errors = nullptr;
 #endif
         }
         ~ProgramErrorState()
         {
+#ifndef PC_COUNT
             if(errors)
             {
                 delete[] errors;
                 errors = NULL;
             }
+#endif
         }
 
+#ifndef PC_COUNT
         void initErrors(uint64 count)
         {
             errors = new CalculationError[count];
         }
+#endif
 
         void setLocationStrings(const char **ls)
         {
@@ -126,9 +139,76 @@ namespace real
 
         void updateSymbolicVarError(const SymbolicVarError &var)
         {
+#ifndef PC_COUNT
             if(errors)
             {
                 errors[programCounter].updateSymbolicVarError(var, symbolicVarId++);
+            }
+#else
+            errors[programCounter].updateSymbolicVarError(var, symbolicVarId++);
+#endif
+        }
+
+        void visualizeTo(const std::string& filename, const SymbolicVarError & root, const std::string& name)
+        {
+            std::ofstream outfile;
+            outfile.open(filename, std::ios::out | std::ios::trunc);
+            visualize(outfile, root, name);
+            outfile.flush();
+            outfile.close();
+        }
+
+        void visualize(std::ostream& stream, const SymbolicVarError & root, const std::string& name)
+        {
+            std::set<void*> visited;
+            stream << "digraph root {\n";
+            visualize(stream, root, name, visited);
+            stream <<"}";
+        }
+
+        void visualize(std::ostream& stream, const SymbolicVarError & var, const std::string& name, std::set<void*>& visited, const std::string* from=nullptr)
+        {
+            if(visited.count((void*)&var)!=0) return;
+            visited.insert((void*)&var);
+            stream  << name 
+                    <<" [shape=record, label=\"{"
+                    << name << "|"
+                    << "MRE=" << var.maxRelativeError
+                    << "}\"];\n";
+            uint64 causing = var.errorCausingCalculationID;
+            if(from!=nullptr)
+            {
+                stream << *from << "->" << name <<";\n";
+            }
+            visualize(stream, causing, visited, &name);
+        }
+        void visualize(std::ostream& stream, uint64 PC, std::set<void*>& visited, const std::string* from=nullptr)
+        {
+            if(visited.count((void*)&errors[PC])!=0) return;
+            visited.insert((void*)&errors[PC]);
+            auto &calc = errors[PC];
+            
+            std::ostringstream calcNameString("");
+            calcNameString << "_CALC_" << PC << "";
+            std::string name = calcNameString.str();
+
+            stream  << name 
+                    <<" [shape=record, label=\"{"
+                    << PC << ":"
+                    << locationStrings[PC] << "|"
+                    << "MRE=" << calc.maxRelativeError
+                    << "}\"];\n";
+            if(from!=nullptr)
+            {
+                stream << *from << "->" << name <<";\n";
+            }
+            for(int i=0,size=calc.inputVars.size();i<size;i++)
+            {
+                auto &var = calc.inputVars[i];
+                std::ostringstream namestream("");
+                namestream << "_CALC_" << PC <<"_" <<i;
+                std::string varName = namestream.str();
+                visualize(stream, var, varName, visited, &name);
             }
         }
     };

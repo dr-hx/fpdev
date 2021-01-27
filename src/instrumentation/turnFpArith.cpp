@@ -1562,6 +1562,16 @@ protected:
                    << print(call->getArg(1))
                    << ")";
         }
+        else if(funcName == "EAST_DRAW_ERROR")
+        {
+            stream << funcName << "("
+                   << print(call->getArg(0))
+                   <<","
+                   << print(call->getArg(1), &helper)
+                   <<","
+                   << print(call->getArg(2))
+                   << ")";
+        }
     }
 
     void doTranslateCall(const Stmt *site, const CallExpr *call, const Expr *ret, RealVarPrinterHelper &helper)
