@@ -1552,7 +1552,7 @@ protected:
         {
             stream << print(call, &helper) << "";
         }
-        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION" || funcName == "EAST_ANALYZE_ERROR")
+        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
         {
             stream << funcName << "("
                    << print(call->getArg(0), &helper)
@@ -1560,6 +1560,14 @@ protected:
                    << print(call->getArg(1), &helper)
                    <<","
                    << print(call->getArg(1))
+                   << ")";
+        }
+        else if(funcName == "EAST_ANALYZE_ERROR")
+        {
+            stream << funcName << "("
+                   << print(call->getArg(0), &helper)
+                   <<","
+                   << print(call->getArg(0))
                    << ")";
         }
         else if(funcName == "EAST_DRAW_ERROR")

@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	//double cb2at = 1./at2cb;
 	for(i=0;i<N;i++){
 		C[i]=0.0;
-		EAST_ANALYZE_ERROR(std::cout, C[i]);
+		EAST_ANALYZE_ERROR(C[i]);
 		Fa[i]=Fb[i]=Fc[i]=Fd[i]=0.0;
 
 	}
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < N; i++)
 		{
 			C[i] = phi3[i] * C[i] + pow( dt,  -2) * L3[i] * (poly1[i] * Fc[i] + poly2[i] * (Fa[i] + Fb[i]) + poly3[i] * Fd[i]);
-			// EAST_ANALYZE_ERROR(std::cout, C[i]);
+			EAST_ANALYZE_ERROR(C[i]);
 			// if(isnan(C[i]))
 			// {
 			// 	EAST_ANALYZE(std::cout, C[i]);

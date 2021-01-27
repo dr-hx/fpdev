@@ -57,11 +57,12 @@ void EAST_DUMP_ERROR(std::ostream& stream, const SVal &sv, double ov)
 
 }
 
-void EAST_ANALYZE_ERROR(std::ostream& stream, double d) {} // pseudo function
-void EAST_ANALYZE_ERROR(std::ostream& stream, const SVal &sv, double ov)
+void EAST_ANALYZE_ERROR(double d) {} // pseudo function
+inline void EAST_ANALYZE_ERROR(const SVal &sv, double ov)
 {
 #if TRACK_ERROR
-#if ACTIVE_TRACK_ERROR
+#if ACTIVE_TRACK_ERROR 
+// error is automatically tracked
 #if DEBUG_INTERNAL
     if(ov != sv.shadow->originalValue)
     {
@@ -71,8 +72,8 @@ void EAST_ANALYZE_ERROR(std::ostream& stream, const SVal &sv, double ov)
 #else // track error debugging mode
     SVal::UpdError(sv, ov);
 #endif
-#else
-    EAST_DUMP_ERROR(stream, sv, ov);
+#else 
+// Error cannot be tracked because of the absence of error state
 #endif
 }
 

@@ -45,7 +45,7 @@ namespace real
         *pre &= 0x7FFFFFFFFFFFFFFF;
         return re;
     }
-    #if TRACK_ERROR
+#if TRACK_ERROR
     static inline void UpdError(const real::Real &svar, double ovar)
     {
         double re = real::Real::CalcError(svar, ovar);

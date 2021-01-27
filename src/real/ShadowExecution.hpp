@@ -124,7 +124,11 @@ void DYNUNDEF(double * res)
     delete res;
 }
 
+#if TRACK_ERROR
 #define PC(id) ERROR_STATE.moveTo(id)
+#else
+#define PC(id) 
+#endif
 
 #define CALCERR(svar, ovar) real::Real::CalcError(svar, ovar)
 
@@ -138,5 +142,12 @@ void DYNUNDEF(double * res)
 #define LOADPARM(id, svar, ovar)  topFrame->loadParm(id, svar, ovar)
 #define PUSHRET(id, svar) topFrame->pushRet(id, svar)
 #define POPRET(id, svar, ovar) topFrame->popRet(id, svar, ovar); topFrame = POPCALL()
+
+#if TRACK_ERROR && KEEP_ORIGINAL==false
+#define AUTOTRACK(v) EAST_ANALYSE_ERROR(v)
+#else
+#define AUTOTRACK(v)
+#endif
+
 
 #endif
