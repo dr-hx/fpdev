@@ -44,7 +44,7 @@ public:
 
     virtual void onStartOfTranslationUnit()
     {
-        pManager = NULL;
+        pManager = nullptr;
     }
     virtual void onEndOfTranslationUnit()
     {
@@ -74,6 +74,18 @@ int main(int argc, const char **argv)
     
     outfile << "#ifndef USER_REAL_CONFIGURE\n";
     outfile << "#define USER_REAL_CONFIGURE\n";
+
+    outfile << "#define USE_MPFR 0\n"
+            << "#define USE_DD 1\n"
+            << "#define PORT_TYPE USE_MPFR\n";
+    
+    outfile <<"#define ORACLE 0\n"
+            <<"#define DEBUGING 1\n"
+            <<"#define RANGE_ACTIVE 2\n"
+            <<"#define FULL_ACTIVE 3\n"
+            <<"#define TRANCKING_MODE FULL_ACTIVE\n";
+
+
 
     outfile << "#define PC_COUNT "<<handler.codePaths.size()<<"\n";
     outfile << "#define STRINGLIZE(str) #str\n";

@@ -107,6 +107,10 @@ testins : instrumentation testnorm
 .PHONY : testnorm
 .PHONY : testins
 
+%.png : %.dot
+	dot -Tpng $< -o $@
+
+vis : $(subst .dot,.png,$(wildcard *.dot))
 
 sample: src/main.cpp
 	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS) $^ $(CLANG_LIBS) $(LLVM_LDFLAGS) -o bin/main -v

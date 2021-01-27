@@ -112,7 +112,7 @@ protected:
     RecordMap* recordMap;
     const std::set<std::string> *targets;
 public:
-    RecordInfoCollector(RecordMap *map) : recordMap(map), targets(NULL) {}
+    RecordInfoCollector(RecordMap *map) : recordMap(map), targets(nullptr) {}
     void setTargets(const std::set<std::string> *t)
     {
         targets = t;
@@ -124,7 +124,7 @@ public:
         auto des = Result.Nodes.getNodeAs<CXXDestructorDecl>("des");
         auto record = Result.Nodes.getNodeAs<RecordDecl>("record");
 
-        if(field!=NULL)
+        if(field!=nullptr)
         {
             auto &recordInfo = (*recordMap)[record];
             recordInfo.recordID = record->getID();
@@ -134,7 +134,7 @@ public:
             return;
         }
 
-        if(cons!=NULL)
+        if(cons!=nullptr)
         {
             auto body = Result.Nodes.getNodeAs<CompoundStmt>("body");
             auto &consInfo = (*recordMap)[record];
@@ -142,7 +142,7 @@ public:
             return;
         }
 
-        if(des!=NULL)
+        if(des!=nullptr)
         {
             auto body = Result.Nodes.getNodeAs<CompoundStmt>("body");
             auto &consInfo = (*recordMap)[record];

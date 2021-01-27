@@ -46,27 +46,27 @@ public:
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("parent");
         const DeclStmt *cvs = Result.Nodes.getNodeAs<DeclStmt>("decl");
         const DeclStmt *lis = Result.Nodes.getNodeAs<DeclStmt>("init");
-        if (cvs == NULL && lis == NULL)
+        if (cvs == nullptr && lis == nullptr)
             return;
 
         std::ostringstream out;
-        if (lis != NULL)
+        if (lis != nullptr)
         {
             out << flatten_declStmt(lis) << std::endl;
         }
-        if (cvs != NULL)
+        if (cvs != nullptr)
         {
             out << flatten_declStmt(cvs) << std::endl;
         }
         Replacement RepCond1 = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, out.str());
         addReplacement(RepCond1);
 
-        if (lis != NULL)
+        if (lis != nullptr)
         {
             Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), lis, "");
             addReplacement(RepCond2);
         }
-        if (cvs != NULL)
+        if (cvs != nullptr)
         {
             VarDecl *var = (VarDecl *)cvs->getSingleDecl();
             Replacement RepCond2 = ReplacementBuilder::create(*(Result.SourceManager), cvs, var->getNameAsString());
@@ -95,29 +95,29 @@ public:
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
         const Expr *inc = Result.Nodes.getNodeAs<Expr>("inc");
 
-        if (decl == NULL && init == NULL && cond==NULL && inc==NULL)
+        if (decl == nullptr && init == nullptr && cond==nullptr && inc==nullptr)
             return;
 
         std::ostringstream prefixOut;
 
         // handle init
-        if (decl != NULL)
+        if (decl != nullptr)
         {
             prefixOut << flatten_declStmt(decl) << std::endl;
         }
-        if (init != NULL) // a=b or a=b=c or a=b, c=d=e, ...
+        if (init != nullptr) // a=b or a=b=c or a=b, c=d=e, ...
         {
             prefixOut << print(init) << ";" << std::endl; // it is better to extract fp changes out only
         }
         Replacement RepPrefix = ReplacementBuilder::create(*(Result.SourceManager), stmt->getBeginLoc(), 0, prefixOut.str());
         addReplacement(RepPrefix);
 
-        if (decl != NULL)
+        if (decl != nullptr)
         {
             Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), decl, ";");
             addReplacement(RepInit);
         }
-        if (init != NULL)
+        if (init != nullptr)
         {
             Replacement RepInit = ReplacementBuilder::create(*(Result.SourceManager), init, "");
             addReplacement(RepInit);
@@ -125,7 +125,7 @@ public:
 
         std::ostringstream bodyOut;
 
-        if (cond != NULL)
+        if (cond != nullptr)
         {
             Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "");
             addReplacement(RepCond);
@@ -136,7 +136,7 @@ public:
             addReplacement(RepBodyF);
         }
         bodyOut.str("");
-        if (inc != NULL)
+        if (inc != nullptr)
         {
             Replacement RepInc = ReplacementBuilder::create(*(Result.SourceManager), inc, "");
             addReplacement(RepInc);
@@ -164,13 +164,13 @@ public:
         const DeclStmt *decl = Result.Nodes.getNodeAs<DeclStmt>("decl");
         const Expr *cond = Result.Nodes.getNodeAs<Expr>("cond");
 
-        if (decl == NULL && cond==NULL)
+        if (decl == nullptr && cond==nullptr)
             return;
 
         std::ostringstream prefixOut;
 
         // handle init
-        if (decl != NULL)
+        if (decl != nullptr)
         {
             prefixOut << "// semantics of this while may be changed !!\n";
             prefixOut << flatten_declStmt(decl) << std::endl;
@@ -183,7 +183,7 @@ public:
 
         std::ostringstream bodyOut;
 
-        if (cond != NULL)
+        if (cond != nullptr)
         { 
             Replacement RepCond = ReplacementBuilder::create(*(Result.SourceManager), cond, "true");
             addReplacement(RepCond);

@@ -55,10 +55,10 @@ public:
         
         Manager = Result.SourceManager;
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-        if(stmt!=NULL) {
+        if(stmt!=nullptr) {
             if(isa<WhileStmt>(stmt)) {
                 WhileStmt* ws = (WhileStmt*)stmt;
-                if(ws->getConditionVariableDeclStmt()!=NULL) {
+                if(ws->getConditionVariableDeclStmt()!=nullptr) {
                     const DeclStmt* decl = ws->getConditionVariableDeclStmt();
                     const DeclStmt* condVar = Result.Nodes.getNodeAs<DeclStmt>("condVar");
                     if(decl==condVar) { // inexact if the matching is unordered
@@ -72,7 +72,7 @@ public:
             }
         } else {
             const DeclStmt* decl = Result.Nodes.getNodeAs<DeclStmt>("multiple");
-            if(decl!=NULL) {
+            if(decl!=nullptr) {
                 flattenVector.insert(decl);
                 addAsNonOverlappedStmt(decl, Result.SourceManager);
             }
@@ -130,7 +130,7 @@ public:
         }
         nonOverlappedStmts.clear();
         stmtVector.clear();
-        Manager = NULL;
+        Manager = nullptr;
     }
 };
 

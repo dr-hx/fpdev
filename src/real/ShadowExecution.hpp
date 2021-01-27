@@ -18,10 +18,10 @@ struct ShadowStackFrame
     ShadowStackFrame* prev;
     ShadowStackFrame(int maxArg=0)
     {
-        if(maxArg==0) realArgs = NULL;
-        else realArgs = new SVal*[maxArg] {NULL};
-        realRet = NULL;
-        prev = NULL;
+        if(maxArg==0) realArgs = nullptr;
+        else realArgs = new SVal*[maxArg] {nullptr};
+        realRet = nullptr;
+        prev = nullptr;
     }
     ~ShadowStackFrame()
     {

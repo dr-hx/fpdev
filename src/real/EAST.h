@@ -68,7 +68,7 @@ void EAST_ANALYZE_ERROR(std::ostream& stream, const SVal &sv, double ov)
         assert(false);
     }
 #endif
-#else // track error passively
+#else // track error debugging mode
     SVal::UpdError(sv, ov);
 #endif
 #else
@@ -93,5 +93,14 @@ void EAST_DRAW_ERROR(std::string name, const SVal &sv, std::string file)
     ERROR_STATE.visualizeTo(file, sv.shadow->error, name);
 #endif
 }
+
+#if ACTIVE_TRACK_ERROR && TRACKING_ON==false
+#define EAST_TRACKING_ON() ERROR_STATE.setTracking(true)
+#define EAST_TRACKING_OFF() ERROR_STATE.setTracking(false)
+#else
+#define EAST_TRACKING_ON()
+#define EAST_TRACKING_OFF() 
+#endif
+
 
 #endif

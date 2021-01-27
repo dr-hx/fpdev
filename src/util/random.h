@@ -12,7 +12,7 @@ typedef unsigned long uint64;
 static uint64 count = 0;
 std::string randomIdentifier(const std::string &base) {
     timeval time;
-    gettimeofday(&time, NULL);
+    gettimeofday(&time, nullptr);
     unsigned int ns = time.tv_sec*1000000 + time.tv_usec;
     std::stringstream ss;
     ss << base <<"_" << ns <<"_" << count++;

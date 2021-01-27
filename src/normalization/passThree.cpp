@@ -37,7 +37,7 @@ public:
         ExpressionExtractionRequest::sort(exts);
 
         std::ostringstream out;
-        const ExpressionExtractionRequest *lastExt = NULL;
+        const ExpressionExtractionRequest *lastExt = nullptr;
 
         auto unique = std::unique(exts.begin(), exts.end());
         exts.erase(unique, exts.end());
@@ -45,19 +45,19 @@ public:
         auto extIt = exts.begin();
         std::string filename;
 
-        while (lastExt != NULL || extIt != exts.end())
+        while (lastExt != nullptr || extIt != exts.end())
         {
-            if(lastExt==NULL) {
+            if(lastExt==nullptr) {
                 filename = extIt->manager->getFilename(extIt->statement->getBeginLoc()).str();
             }
 
-            if (lastExt != NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
+            if (lastExt != nullptr && (extIt == exts.end() || lastExt->statement != extIt->statement))
             {
                 out.flush();
                 std::string parmDef = out.str();
                 Replacement Rep1 = ReplacementBuilder::create(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
                 addReplacement(Rep1);
-                lastExt = NULL;
+                lastExt = nullptr;
                 out.str("");
             }
             else

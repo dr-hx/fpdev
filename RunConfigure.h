@@ -1,6 +1,14 @@
 #ifndef USER_REAL_CONFIGURE
 #define USER_REAL_CONFIGURE
-#define PC_COUNT 193
+#define USE_MPFR 0
+#define USE_DD 1
+#define PORT_TYPE USE_MPFR
+#define ORACLE 0
+#define DEBUGING 1
+#define RANGE_ACTIVE 2
+#define FULL_ACTIVE 3
+#define TRANCKING_MODE FULL_ACTIVE
+#define PC_COUNT 194
 #define STRINGLIZE(str) #str
 static const char *PATH_STRINGS[] = {
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:29:2),
@@ -52,13 +60,11 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:94:2
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:95:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:122:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:132:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:258:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:259:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:264:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:265:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:260:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:261:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:266:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:270:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:271:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:267:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:268:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:272:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:273:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:274:2),
@@ -111,8 +117,10 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:320:
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:321:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:322:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:323:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:326:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:327:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:324:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:325:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:328:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:329:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:84:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:85:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:86:3),
@@ -153,9 +161,11 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:233:
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:234:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:238:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:243:3),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:244:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:253:3),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:254:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:255:3),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:256:3),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:257:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:137:4),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:147:4),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:148:4),
@@ -192,8 +202,7 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:223:
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:227:5),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:228:5),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:236:4),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:245:4),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:246:4),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:261:3),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:262:3)};
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:263:3),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:264:3)};
 #endif

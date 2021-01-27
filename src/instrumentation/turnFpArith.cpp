@@ -100,8 +100,8 @@ auto funcDecl = functionDecl(isExpansionInMainFile()).bind("func-scope");
 auto scope = stmt(isExpansionInMainFile(), anyOf(compoundStmt(), ifStmt(), forStmt(), whileStmt(), doStmt(), switchStmt())).bind("stmt-scope");
 auto outStmt = stmt(isExpansionInMainFile(), anyOf(breakStmt(), returnStmt(optionally(hasReturnValue(stmt().bind("retVal")))))).bind("out-scope");
 
-// root: parent = NULL, statement = NULL
-// function decl: parent != NULL, statement = NULL
+// root: parent = nullptr, statement = nullptr
+// function decl: parent != nullptr, statement = nullptr
 
 // hook constructor and destructor
 //  constructor: default+customized, copy, move
@@ -165,7 +165,7 @@ struct VarDef
     virtual bool isDynamic() const  = 0;
     virtual bool isSingle() const = 0;
     // const CallExpr *callInitializer;
-    // VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : varDef(def), defSite(site), callInitializer(init) {}
+    // VarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = nullptr) : varDef(def), defSite(site), callInitializer(init) {}
     // bool isParm()
     // {
     //     return isa<ParmVarDecl>(varDef);
@@ -175,7 +175,7 @@ struct VarDef
 struct SingleVarDef : public VarDef
 {
     const CallExpr *callInitializer;
-    SingleVarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = NULL) : VarDef(def,site), callInitializer(init) {}
+    SingleVarDef(const VarDecl *def, const Stmt *site, const CallExpr *init = nullptr) : VarDef(def,site), callInitializer(init) {}
     virtual bool isDynamic() const {return false;}
     virtual bool isSingle() const {return true;}
 };
@@ -183,7 +183,7 @@ struct SingleVarDef : public VarDef
 struct ArrVarDef : public VarDef
 {
     ArrVarDef(const VarDecl *def, const Stmt *site, const Expr* len, int f, bool dy) : VarDef(def,site), lengthExpr(len), length(), factor(f), dynamic(dy) {}
-    ArrVarDef(const VarDecl *def, const Stmt *site, llvm::APInt len, int f, bool dy) : VarDef(def,site), lengthExpr(NULL), length(len), factor(f), dynamic(dy) {}
+    ArrVarDef(const VarDecl *def, const Stmt *site, llvm::APInt len, int f, bool dy) : VarDef(def,site), lengthExpr(nullptr), length(len), factor(f), dynamic(dy) {}
     const Expr* lengthExpr;
     llvm::APInt length;
     int factor; // sizeof(double) or 1
@@ -224,8 +224,8 @@ struct VarDefRecord
     void insertArrDef(const VarDecl *arrdef, const Stmt *site)
     {
         auto type = (const ConstantArrayType*)arrdef->getType().getTypePtr();
-        VarDef *vd = NULL;
-        if(type->getSizeExpr()!=NULL) vd = new ArrVarDef(arrdef, site, type->getSizeExpr(), 1, false);
+        VarDef *vd = nullptr;
+        if(type->getSizeExpr()!=nullptr) vd = new ArrVarDef(arrdef, site, type->getSizeExpr(), 1, false);
         else vd = new ArrVarDef(arrdef, site, type->getSize(), 1, false);
         defs.push_back(vd);
         index[arrdef] = vd;
@@ -309,10 +309,10 @@ struct VarDeclInFile
 struct ScopeItem : public StmtInFile
 {
     ScopeItem *parent;
-    ScopeItem() : StmtInFile(NULL, SourceRange()), parent(NULL) {}
-    ScopeItem(const FunctionDecl *f, const SourceManager *m) : StmtInFile(NULL, SourceRange(m->getFileLoc(f->getBeginLoc()), m->getFileLoc(f->getEndLoc()))),
-                                                               parent(NULL) {}
-    ScopeItem(const Stmt *s, const SourceManager *m) : StmtInFile(s, m), parent(NULL) {}
+    ScopeItem() : StmtInFile(nullptr, SourceRange()), parent(nullptr) {}
+    ScopeItem(const FunctionDecl *f, const SourceManager *m) : StmtInFile(nullptr, SourceRange(m->getFileLoc(f->getBeginLoc()), m->getFileLoc(f->getEndLoc()))),
+                                                               parent(nullptr) {}
+    ScopeItem(const Stmt *s, const SourceManager *m) : StmtInFile(s, m), parent(nullptr) {}
 
     virtual bool insert(ScopeItem *scope)
     {
@@ -337,7 +337,7 @@ struct ScopeItem : public StmtInFile
 
     bool isFuncDecl()
     {
-        return parent != NULL && statement == NULL;
+        return parent != nullptr && statement == nullptr;
     }
     virtual bool isScope()
     {
@@ -346,13 +346,13 @@ struct ScopeItem : public StmtInFile
 
     virtual void dump(const SourceManager &Manager, unsigned int indent)
     {
-        if (parent == NULL)
+        if (parent == nullptr)
         {
             llvm::outs() << "root\n";
         }
         else
         {
-            if (statement == NULL)
+            if (statement == nullptr)
             {
                 llvm::outs().indent(indent) << "function decl at ";
             }
@@ -506,7 +506,7 @@ struct Scope : public ScopeItem
         subItems.push_back(scope);
         scope->parent = this;
 
-        // if(scope->statement!=NULL) {
+        // if(scope->statement!=nullptr) {
         //     stmtMap[scope->statement] = scope;
         // }
         return true;
@@ -514,7 +514,7 @@ struct Scope : public ScopeItem
 
     bool check(const SourceManager &Manager)
     {
-        if (parent == NULL)
+        if (parent == nullptr)
         {
             if (varDecls.size() != 0)
             {
@@ -527,7 +527,7 @@ struct Scope : public ScopeItem
             }
         }
 
-        if (parent != NULL && statement == NULL)
+        if (parent != nullptr && statement == nullptr)
         {
             if (subItems.size() > 1)
             {
@@ -536,7 +536,7 @@ struct Scope : public ScopeItem
             }
         }
 
-        if (statement != NULL)
+        if (statement != nullptr)
         {
             if (!isa<CompoundStmt>(statement))
             {
@@ -620,7 +620,7 @@ struct ScopeTree : public Scope
         }
         else
         {
-            if (scope->statement != NULL)
+            if (scope->statement != nullptr)
                 stmtMap[scope->statement] = scope;
             return true;
         }
@@ -642,7 +642,7 @@ struct ScopeTree : public Scope
 
     bool isClosedScope(ScopeItem *target)
     {
-        if (target->statement == NULL)
+        if (target->statement == nullptr)
             return true;
 
         if (isa<IfStmt>(target->statement))
@@ -851,7 +851,7 @@ public:
     };
 
 private:
-    FpStmt(Type t, const Stmt *s, const Stmt *r = NULL, const VarDecl *v = NULL) : type(t), fpStmt(s), rhs(r), var(v) {}
+    FpStmt(Type t, const Stmt *s, const Stmt *r = nullptr, const VarDecl *v = nullptr) : type(t), fpStmt(s), rhs(r), var(v) {}
 
 public:
     Type type;
@@ -935,8 +935,8 @@ protected:
 public:
     FpArithInstrumentation(std::map<std::string, Replacements> &r) : MatchHandler(r)
     {
-        manager = NULL;
-        scopeTree = NULL;
+        manager = nullptr;
+        scopeTree = nullptr;
     }
     virtual void run(const MatchFinder::MatchResult &Result)
     {
@@ -948,14 +948,14 @@ public:
             const VarDecl *arrDef = Result.Nodes.getNodeAs<VarDecl>("arr-def");
             const VarDecl *ptrDef = Result.Nodes.getNodeAs<VarDecl>("pointer-def");
 
-            if (decl != NULL)
+            if (decl != nullptr)
             {
                 varUse.declare(decl);
                 fillReplace(decl, Result);
                 return;
             }
 
-            if (def != NULL)
+            if (def != nullptr)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 if(isa<ParmVarDecl>(def))
@@ -968,7 +968,7 @@ public:
                 return;
             }
 
-            if(arrDef !=NULL)
+            if(arrDef !=nullptr)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 varDefs.insertArrDef(arrDef, site);
@@ -977,13 +977,13 @@ public:
                 return;
             }
 
-            if(ptrDef != NULL)
+            if(ptrDef != nullptr)
             {
                 const Stmt *site = Result.Nodes.getNodeAs<Stmt>("def-site");
                 const CallExpr *init = Result.Nodes.getNodeAs<CallExpr>("rhs");
             }
 
-            if (sharedVar != NULL)
+            if (sharedVar != nullptr)
             {
                 varUse.share(sharedVar);
                 fillReplace(sharedVar, Result);
@@ -993,7 +993,7 @@ public:
 
         {
             const Expr *lFpVal = Result.Nodes.getNodeAs<Expr>("lFpVal");
-            if (lFpVal != NULL)
+            if (lFpVal != nullptr)
             {
                 lFpVals.insert(lFpVal);
                 fillReplace(lFpVal, Result);
@@ -1003,7 +1003,7 @@ public:
 
         {
             auto call = Result.Nodes.getNodeAs<CallExpr>("call");
-            if (call != NULL)
+            if (call != nullptr)
             {
                 auto callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
                 auto arg = Result.Nodes.getNodeAs<Expr>("arg");
@@ -1016,7 +1016,7 @@ public:
 
         {
             const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
-            if (stmt != NULL)
+            if (stmt != nullptr)
             {
                 if (isa<UnaryOperator>(stmt))
                 {
@@ -1047,13 +1047,13 @@ public:
             const Expr* alloc = Result.Nodes.getNodeAs<Expr>("alloc");
             const Expr* free = Result.Nodes.getNodeAs<Expr>("free");
 
-            if(alloc!=NULL)
+            if(alloc!=nullptr)
             {
                 const Expr* size = Result.Nodes.getNodeAs<Expr>("size");
                 dynArrRecord.logAlloc(alloc, size, *Result.SourceManager);
                 fillReplace(alloc, Result);
             } 
-            else if(free!=NULL)
+            else if(free!=nullptr)
             {
                 const Expr* pt = Result.Nodes.getNodeAs<Expr>("pointer");
                 dynArrRecord.logFree(free, pt, *Result.SourceManager);
@@ -1067,17 +1067,17 @@ public:
             const Stmt *stmtScope = Result.Nodes.getNodeAs<Stmt>("stmt-scope");
             const Stmt *outScope = Result.Nodes.getNodeAs<Stmt>("out-scope");
 
-            if (funcScope != NULL)
+            if (funcScope != nullptr)
             {
                 scopeTree->insert(new Scope(funcScope, Result.SourceManager));
                 fillReplace(funcScope, Result);
             }
-            if (stmtScope != NULL)
+            if (stmtScope != nullptr)
             {
                 scopeTree->insert(new Scope(stmtScope, Result.SourceManager));
                 fillReplace(stmtScope, Result);
             }
-            if (outScope != NULL)
+            if (outScope != nullptr)
             {
                 const Expr *ret = Result.Nodes.getNodeAs<Expr>("retVal");
                 scopeTree->insert(new ScopeBreak(outScope, Result.SourceManager, ret));
@@ -1091,13 +1091,13 @@ public:
     template <typename T>
     void fillReplace(const T *d, const MatchFinder::MatchResult &Result)
     {
-        if (manager == NULL)
+        if (manager == nullptr)
         {
             manager = Result.SourceManager;
             filename = manager->getFilename(d->getBeginLoc()).str();
             if(this->targets->count(filename)==0)
             {
-                manager = NULL;
+                manager = nullptr;
             }
         }
     }
@@ -1121,7 +1121,7 @@ public:
 
     virtual void onStartOfTranslationUnit()
     {
-        manager = NULL;
+        manager = nullptr;
         scopeTree = new ScopeTree();
     }
 
@@ -1133,7 +1133,7 @@ public:
     virtual void onEndOfTranslationUnit()
     {
         // std::set<const VarDecl*> staticReal;
-        if (manager != NULL)
+        if (manager != nullptr)
         {
             RealVarPrinterHelper helper(varUse, lFpVals);
             // std::string header;
@@ -1198,7 +1198,7 @@ public:
 
     void clear()
     {
-        if (scopeTree != NULL)
+        if (scopeTree != nullptr)
             delete scopeTree;
         varUse.clear();
         varDefs.clear();
@@ -1218,7 +1218,7 @@ protected:
             SourceRange siteRangeInFile = SourceRange(manager->getFileLoc(group.first->getBeginLoc()), manager->getFileLoc(group.first->getEndLoc()));
             bool isParmDef = isa<CompoundStmt>(group.first);
 
-            if (group.second.size() == 1 && group.second[0]->isSingle() && ((const SingleVarDef*)group.second[0])->callInitializer!=NULL)
+            if (group.second.size() == 1 && group.second[0]->isSingle() && ((const SingleVarDef*)group.second[0])->callInitializer!=nullptr)
             { // single def with fp call initialer
                 std::string sValName = varUse.getSValName(group.second[0]->varDef);
                 doTranslateCall(group.first, ((const SingleVarDef*)group.second[0])->callInitializer, sValName, group.second[0]->varDef->getNameAsString(), helper);
@@ -1234,7 +1234,7 @@ protected:
                 {
                     if(v->isSingle())
                     {
-                        assert(((const SingleVarDef*)v)->callInitializer == NULL);
+                        assert(((const SingleVarDef*)v)->callInitializer == nullptr);
                         if (varUse.isInteresting(v->varDef))
                         {
                             std::string varName = v->varDef->getNameAsString();
@@ -1274,7 +1274,7 @@ protected:
                         std::string varName = v->varDef->getNameAsString();
                         // we do not generate alias for array var. instead, we declare map space for them. this may cause extra runtime overhead
                         // we expact that ARRDEF also initializes the array. BUT for parameters, we may also load them from call stack!
-                        if(arrDef->lengthExpr!=NULL)
+                        if(arrDef->lengthExpr!=nullptr)
                         {
                             stream  << "ARRDEF(" << varName << ", " << print(arrDef->lengthExpr) << "/" << arrDef->factor << ");\n"; 
                         }
@@ -1309,7 +1309,7 @@ protected:
         if (scopeItem->isScope())
         {
             Scope *scope = (Scope *)scopeItem;
-            if (scopeItem->statement != NULL && isa<CompoundStmt>(scopeItem->statement))
+            if (scopeItem->statement != nullptr && isa<CompoundStmt>(scopeItem->statement))
             { // we only need to check compound statement
                 if (!scopeTree->isClosedScope(scopeItem))
                 {
@@ -1361,7 +1361,7 @@ protected:
             {
                 auto retStmt = (ReturnStmt *)sbreak->statement;
                 auto retVal = sbreak->returnValue;
-                if (retVal != NULL && isa<DeclRefExpr>(retVal))
+                if (retVal != nullptr && isa<DeclRefExpr>(retVal))
                 {
                     auto ref = (DeclRefExpr *)retVal;
                     auto valDecl = ref->getDecl();
@@ -1578,7 +1578,7 @@ protected:
     {
         std::string retName = "";
         std::string oRetName = "";
-        if (ret != NULL)
+        if (ret != nullptr)
         {
             retName = print(ret, &helper);
             oRetName = print(ret);
@@ -1605,7 +1605,7 @@ protected:
             case FpStmt::Type::FP_CALL:
             {
                 const CallExpr *call = (const CallExpr *)stmt.fpStmt;
-                doTranslateCall(stmt.fpStmt, call, NULL, helper);
+                doTranslateCall(stmt.fpStmt, call, nullptr, helper);
             }
             break;
             case FpStmt::Type::FP_CALL_ASSIGNMENT:
@@ -1632,7 +1632,7 @@ class FunctionInfoCollector : public MatchFinder::MatchCallback
 protected:
     const std::set<std::string> *targets;
 public:
-    FunctionInfoCollector(FunctionTranslationStrategy * strategy) : strategy(strategy), targets(NULL) {}
+    FunctionInfoCollector(FunctionTranslationStrategy * strategy) : strategy(strategy), targets(nullptr) {}
     FunctionTranslationStrategy * strategy;
     
 

@@ -225,7 +225,7 @@ namespace real
                 int empty = 0;
                 for(int i=0;i<cacheSize;i++)
                 {
-                    if(cache[i].address!=NULL)
+                    if(cache[i].address!=nullptr)
                     {
                         printf("X");
                     }
@@ -253,14 +253,14 @@ namespace real
                     missedCount++;
 #if DELEGATE_TO_POOL
                     RealType *&ptr = map[KEY_SHIFT(address)];
-                    if(ptr==NULL)
+                    if(ptr==nullptr)
                     {
                         ptr = RealPool<RealType>::INSTANCE.get();
                         *ptr = *address; // init
                     }
 #else
                     auto it = map.find(KEY_SHIFT(address));
-                    RealType *ptr = NULL;
+                    RealType *ptr = nullptr;
                     if(it==map.end())
                     {
                         ptr = &(map[KEY_SHIFT(address)] = *address); // init
@@ -281,7 +281,7 @@ namespace real
                 {
 #if DELEGATE_TO_POOL
                     RealType *&ptr = map[KEY_SHIFT(address)];
-                    if(ptr==NULL)
+                    if(ptr==nullptr)
                     {
                         ptr = RealPool<RealType>::INSTANCE.get();
                     }
@@ -295,7 +295,7 @@ namespace real
             }
             RealType &def(Key address)
             {
-                RealType *ptr = NULL;
+                RealType *ptr = nullptr;
 #if DELEGATE_TO_POOL
                 __value_ptr vp = RealPool<RealType>::INSTANCE.get();
                 map[KEY_SHIFT(address)] = vp;

@@ -57,7 +57,7 @@ public:
         auto exts = extractions;
 
         std::ostringstream out;
-        const ExpressionExtractionRequest *lastExt = NULL;
+        const ExpressionExtractionRequest *lastExt = nullptr;
 
         ExpressionExtractionRequest::sort(exts);
 
@@ -66,13 +66,13 @@ public:
 
         auto extIt = exts.begin();
         std::string filename;
-        while (lastExt != NULL || extIt != exts.end())
+        while (lastExt != nullptr || extIt != exts.end())
         {
-            if(lastExt==NULL) {
+            if(lastExt==nullptr) {
                 filename = extIt->manager->getFilename(extIt->statement->getBeginLoc()).str();
             }
 
-            if (lastExt != NULL && (extIt == exts.end() || lastExt->statement != extIt->statement))
+            if (lastExt != nullptr && (extIt == exts.end() || lastExt->statement != extIt->statement))
             {
                 out.flush();
                 
@@ -80,7 +80,7 @@ public:
                 Replacement Rep1 = ReplacementBuilder::create(*lastExt->manager, lastExt->statement->getBeginLoc(), 0, parmDef);
                 addReplacement(Rep1);
 
-                lastExt = NULL;
+                lastExt = nullptr;
                 out.str("");
             }
             else
@@ -114,7 +114,7 @@ public:
         const Stmt *stmt = Result.Nodes.getNodeAs<Stmt>("stmt");
         const ParmVarDecl *formal = Result.Nodes.getNodeAs<ParmVarDecl>("formal");
         QualType type;
-        if (formal == NULL)
+        if (formal == nullptr)
             type = actual->getType();
         else
             type = formal->getType();

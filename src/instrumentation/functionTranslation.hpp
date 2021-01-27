@@ -43,7 +43,7 @@ struct FunctionTranslationStrategy
     const std::string* hasAbstractedFunction(const std::string& name)
     {
         auto it = abstractedFunctions.find(name);
-        if(it==abstractedFunctions.end()) return NULL;
+        if(it==abstractedFunctions.end()) return nullptr;
         else return &it->second;
     }
 };

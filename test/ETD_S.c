@@ -240,15 +240,17 @@ int main(int argc, char *argv[])
 			printf("Fd[%d]=%e\n",i,Fd[i]);
 		}*/
 
+		EAST_TRACKING_ON();
 		for (i = 0; i < N; i++)
 		{
 			C[i] = phi3[i] * C[i] + pow( dt,  -2) * L3[i] * (poly1[i] * Fc[i] + poly2[i] * (Fa[i] + Fb[i]) + poly3[i] * Fd[i]);
-			EAST_ANALYZE_ERROR(std::cout, C[i]);
+			// EAST_ANALYZE_ERROR(std::cout, C[i]);
 			// if(isnan(C[i]))
 			// {
 			// 	EAST_ANALYZE(std::cout, C[i]);
 			// }
 		}
+		EAST_TRACKING_OFF();
 		
 		t = t + dt;
 		sumalpha = sumalpha_a = sumalpha_b = sumalpha_d = 0.0;

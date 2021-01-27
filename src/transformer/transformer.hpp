@@ -277,7 +277,7 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result)
     {
     //     const TranslationUnitDecl* file = Result.Nodes.getNodeAs<TranslationUnitDecl>("file");
-    //     if(file!=NULL)
+    //     if(file!=nullptr)
     //     {
     //         auto loc = file->getSourceRange();
     //         assert(loc.isValid());
@@ -295,7 +295,7 @@ public:
         targets = t;
     }
 
-    static std::string print(const Stmt *stmt, PrinterHelper *helper = NULL)
+    static std::string print(const Stmt *stmt, PrinterHelper *helper = nullptr)
     {
         std::string str;
         llvm::raw_string_ostream stream(str);
@@ -391,26 +391,26 @@ public:
         extractionRequests.erase(unique, extractionRequests.end());
 
         std::ostringstream out;
-        const ExpressionExtractionRequest *lastExtractionRequest = NULL;
+        const ExpressionExtractionRequest *lastExtractionRequest = nullptr;
 
         std::string filename;
         Replacements *Replace;
         auto requestIterator = extractionRequests.begin();
 
-        while (lastExtractionRequest != NULL || requestIterator != extractionRequests.end())
+        while (lastExtractionRequest != nullptr || requestIterator != extractionRequests.end())
         {
-            if (Replace == NULL)
+            if (Replace == nullptr)
             {
                 filename = requestIterator->manager->getFilename(requestIterator->statement->getBeginLoc()).str();
                 Replace = &ReplaceMap[filename];
             }
 
-            if (lastExtractionRequest != NULL && (requestIterator == extractionRequests.end() || lastExtractionRequest->statement != requestIterator->statement))
+            if (lastExtractionRequest != nullptr && (requestIterator == extractionRequests.end() || lastExtractionRequest->statement != requestIterator->statement))
             {
                 out.flush();
                 std::string extractedStmts = out.str();
                 convertStatement(Replace, lastExtractionRequest->manager, extractedStmts, lastExtractionRequest->statement, helper);
-                lastExtractionRequest = NULL;
+                lastExtractionRequest = nullptr;
                 out.str("");
             }
             else

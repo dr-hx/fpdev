@@ -23,7 +23,7 @@ public:
         const SourceManager *Manager = Result.SourceManager;
         const NullStmt *nullStmt = Result.Nodes.getNodeAs<NullStmt>("null");
 
-        if(nullStmt!=NULL) {
+        if(nullStmt!=nullptr) {
             Replacement Rep = ReplacementBuilder::create(*Manager, nullStmt, "");
             Replacements &Replace = ReplaceMap[Rep.getFilePath().str()];
             llvm::Error err = Replace.add(Rep);

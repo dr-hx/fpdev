@@ -840,11 +840,11 @@ namespace real
         }
         void start()
         {
-            gettimeofday(&start_tv, NULL);
+            gettimeofday(&start_tv, nullptr);
         }
         void end()
         {
-            gettimeofday(&end_tv, NULL);
+            gettimeofday(&end_tv, nullptr);
             long time_use = (end_tv.tv_sec - start_tv.tv_sec) * 1000000 + (end_tv.tv_usec - start_tv.tv_usec);
             accumulation += time_use;
         }

@@ -27,7 +27,7 @@ namespace ustb
             std::vector<RangeInFile*> subRanges;
             RangeInFile* parentRange;
 
-            RangeInFile(const clang::SourceRange &r) : rangeInFile(r), parentRange(NULL) {}
+            RangeInFile(const clang::SourceRange &r) : rangeInFile(r), parentRange(nullptr) {}
             virtual ~RangeInFile() {
                 for(auto r : subRanges) {
                     delete r;
@@ -44,7 +44,7 @@ namespace ustb
                         }
                         size --;
                     } else if(subRanges[i]->cover(*s)) {
-                        if(rootsOnly) return NULL;
+                        if(rootsOnly) return nullptr;
                         else return subRanges[i]->addSubRange(s, rootsOnly);
                     }
                 }
