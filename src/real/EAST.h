@@ -103,5 +103,17 @@ void EAST_DRAW_ERROR(std::string name, const SVal &sv, std::string file)
 #define EAST_TRACKING_OFF() 
 #endif
 
+void EAST_SYNC(double v) {}
+
+inline void EAST_SYNC(SVal &sv, double v)
+{
+    sv = v;
+}
+
+void EAST_FIX(double v) {}
+inline void EAST_FIX(SVal &sv, double& v)
+{
+    v = TO_DOUBLE(sv.shadow->shadowValue);
+}
 
 #endif

@@ -1562,7 +1562,7 @@ protected:
                    << print(call->getArg(1))
                    << ")";
         }
-        else if(funcName == "EAST_ANALYZE_ERROR")
+        else if(funcName == "EAST_ANALYZE_ERROR" || funcName == "EAST_SYNC" || funcName == "EAST_FIX")
         {
             stream << funcName << "("
                    << print(call->getArg(0), &helper)

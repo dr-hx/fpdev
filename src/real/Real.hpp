@@ -41,9 +41,8 @@ namespace real
             dsv = 1.1E-16;
         }
         double re = (dsv - ovar) / dsv;
-        long *pre = (long *)&re;
-        *pre &= 0x7FFFFFFFFFFFFFFF;
-        return re;
+        if(re<0) return -re;
+        else return re;
     }
 #if TRACK_ERROR
     static inline void UpdError(const real::Real &svar, double ovar)
