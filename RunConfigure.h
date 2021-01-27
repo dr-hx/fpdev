@@ -1,6 +1,6 @@
 #ifndef USER_REAL_CONFIGURE
 #define USER_REAL_CONFIGURE
-#define PC_COUNT 192
+#define PC_COUNT 193
 #define STRINGLIZE(str) #str
 static const char *PATH_STRINGS[] = {
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:29:2),
@@ -56,7 +56,7 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:258:
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:259:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:264:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:265:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:269:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:266:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:270:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:271:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:272:2),
@@ -110,8 +110,9 @@ STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:319:
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:320:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:321:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:322:2),
-STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:325:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:323:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:326:2),
+STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:327:2),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:84:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:85:3),
 STRINGLIZE(/Volumes/Macintosh HD Data/Haskel IDE/fpdev/test/derived/ETD_S.c:86:3),

@@ -22,3 +22,5 @@ src/qd/src/fpu.o
 src/qd/src/qd_const.o
 src/qd/src/qd_real.o
 src/qd/src/util.o
+*.dot
+*.png

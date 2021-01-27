@@ -261,6 +261,7 @@ int main(int argc, char *argv[])
 		printf("C[%d]=%e\n", i, C[i]);
 		EAST_DUMP_ERROR(std::cout, C[i]);
 	}
+	EAST_DUMP_ERROR(std::cout, C[0]);
 	EAST_DRAW_ERROR("C0", C[0], "/Volumes/Macintosh HD Data/Haskel IDE/fpdev/output.dot");
 	totaltime = (end - start) / CLOCKS_PER_SEC;
 	//for(i=0;i<N;i++)

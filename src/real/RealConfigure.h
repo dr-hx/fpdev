@@ -38,7 +38,7 @@
 */
 #define DELEGATE_TO_POOL false
 
-#define DEBUG_INTERNAL false
+#define DEBUG_INTERNAL true
 
 /* 
     A flag that determines whether the function is inlined.

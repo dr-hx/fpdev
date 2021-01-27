@@ -51,11 +51,12 @@ namespace real
 
     struct CalculationError
     {
-        double maxRelativeError;
-        double relativeErrorOfLastCheck;
+        // double maxRelativeError;
+        // double relativeErrorOfLastCheck;
         std::vector<SymbolicVarError> inputVars;
 
-        CalculationError() : maxRelativeError(0),relativeErrorOfLastCheck(0) {}
+        CalculationError() {}
+        //: maxRelativeError(0),relativeErrorOfLastCheck(0) {}
 
         void updateSymbolicVarError(const SymbolicVarError& var, uint id)
         {
@@ -65,7 +66,7 @@ namespace real
                 return; // short-cut
             }
             
-            if(inputVars.size() <= id)
+            if(inputVars.size() < id)
             {
                 inputVars.reserve(id<32 ? 32 : (id + id/2));
                 inputVars.resize(id+1);
@@ -193,11 +194,9 @@ namespace real
             std::string name = calcNameString.str();
 
             stream  << name 
-                    <<" [shape=record, label=\"{"
-                    << PC << ":"
-                    << locationStrings[PC] << "|"
-                    << "MRE=" << calc.maxRelativeError
-                    << "}\"];\n";
+                    <<" [shape=ellipse, label=\""
+                    << PC << ":" << locationStrings[PC] 
+                    << "\"];\n";
             if(from!=nullptr)
             {
                 stream << *from << "->" << name <<";\n";
