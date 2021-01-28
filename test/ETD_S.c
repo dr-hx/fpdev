@@ -20,7 +20,7 @@
 #define N 500
 #define T 823
 #define PI 3.141592
-#define TIME 1000
+#define TIME 10000
 
 int main(int argc, char *argv[])
 {
@@ -240,17 +240,17 @@ int main(int argc, char *argv[])
 			printf("Fd[%d]=%e\n",i,Fd[i]);
 		}*/
 
-		EAST_TRACKING_ON();
+		// EAST_TRACKING_ON();
 		for (i = 0; i < N; i++)
 		{
 			C[i] = phi3[i] * C[i] + pow( dt,  -2) * L3[i] * (poly1[i] * Fc[i] + poly2[i] * (Fa[i] + Fb[i]) + poly3[i] * Fd[i]);
-			EAST_ANALYZE_ERROR(C[i]);
+			// EAST_ANALYZE_ERROR(C[i]);
 			// if(isnan(C[i]))
 			// {
 			// 	EAST_ANALYZE(std::cout, C[i]);
 			// }
 		}
-		EAST_TRACKING_OFF();
+		// EAST_TRACKING_OFF();
 		
 		t = t + dt;
 		sumalpha = sumalpha_a = sumalpha_b = sumalpha_d = 0.0;
@@ -263,8 +263,7 @@ int main(int argc, char *argv[])
 		printf("C[%d]=%e\n", i, C[i]);
 		EAST_DUMP_ERROR(std::cout, C[i]);
 	}
-	EAST_DUMP_ERROR(std::cout, C[0]);
-	EAST_DRAW_ERROR("C0", C[0], "/Volumes/Macintosh HD Data/Haskel IDE/fpdev/output.dot");
+
 	totaltime = (end - start) / CLOCKS_PER_SEC;
 	//for(i=0;i<N;i++)
 	//printf("C[%d] = %e\n",i,C[i]);
@@ -323,11 +322,6 @@ int main(int argc, char *argv[])
 	a = NULL;
 	free(C);
 	C = NULL;
-
-#define __LO(x) *(int*)&x
-
-	double df = 1;
-	__LO(df) = 0;
 
 	//system("pause");
 	printf("totaltime=%fs\n", totaltime);

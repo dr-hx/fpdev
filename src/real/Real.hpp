@@ -929,6 +929,42 @@ namespace real
         r = dr;
         EXPBODY;
     }
+
+
+
+#if KEEP_ORIGINAL
+#define SQRTBODY \
+    SQRT_R(res.shadow->shadowValue, r.shadow->shadowValue); \
+    res.shadow->originalValue = sqrt(r.shadow->originalValue);\
+    return std::move(res)
+#else
+#define EXPBODY \
+    SQRT_R(res.shadow->shadowValue, r.shadow->shadowValue); \
+    return std::move(res)
+#endif
+
+    real::Real &&RealSqrt(const real::Real &r)
+    {
+#if TRACK_ERROR
+        ERROR_STATE.updateSymbolicVarError(r.shadow->error);
+#endif
+        real::Real &res = *real::RealPool<real::Real>::INSTANCE.get();
+        SQRTBODY;
+    }
+    real::Real &&RealSqrt(real::Real &&r)
+    {
+        real::Real &res = r;
+        SQRTBODY;
+    }
+    real::Real &&RealSqrt(double dr)
+    {
+        real::Real &r = *real::RealPool<real::Real>::INSTANCE.get();
+        real::Real &res = r;
+        r = dr;
+        SQRTBODY;
+    }
+
+
     
 
 #if KEEP_ORIGINAL

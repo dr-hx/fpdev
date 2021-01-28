@@ -51,6 +51,8 @@
 
 #define EXP_R(res, r) mpfr_exp(res, r, RND)
 #define POW_RR(res, a, b) mpfr_pow(res, a, b, RND) 
+#define SQRT_R(res, r) mpfr_sqrt(res, r, RND)
+
 
 #define COPY_EXP_D(res, d) mpfr_set_exp(res, __EXP_BITS(d))
 

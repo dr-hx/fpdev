@@ -1642,40 +1642,41 @@ protected:
 
     void doTranslatePseudoFunctionCall(llvm::raw_ostream& stream, const CallExpr* call, clang::PrinterHelper& helper)
     {
-        auto funcName = call->getDirectCallee()->getNameAsString();
+        this->funcStrategy->doTranslatePseudoFunctionCall(stream, call, helper);
+        // auto funcName = call->getDirectCallee()->getNameAsString();
         
-        if(funcName == "EAST_DUMP")
-        {
-            stream << print(call, &helper) << "";
-        }
-        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
-        {
-            stream << funcName << "("
-                   << print(call->getArg(0), &helper)
-                   <<","
-                   << print(call->getArg(1), &helper)
-                   <<","
-                   << print(call->getArg(1))
-                   << ")";
-        }
-        else if(funcName == "EAST_ANALYZE_ERROR" || funcName == "EAST_SYNC" || funcName == "EAST_FIX")
-        {
-            stream << funcName << "("
-                   << print(call->getArg(0), &helper)
-                   <<","
-                   << print(call->getArg(0))
-                   << ")";
-        }
-        else if(funcName == "EAST_DRAW_ERROR")
-        {
-            stream << funcName << "("
-                   << print(call->getArg(0))
-                   <<","
-                   << print(call->getArg(1), &helper)
-                   <<","
-                   << print(call->getArg(2))
-                   << ")";
-        }
+        // if(funcName == "EAST_DUMP")
+        // {
+        //     stream << print(call, &helper) << "";
+        // }
+        // else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
+        // {
+        //     stream << funcName << "("
+        //            << print(call->getArg(0), &helper)
+        //            <<","
+        //            << print(call->getArg(1), &helper)
+        //            <<","
+        //            << print(call->getArg(1))
+        //            << ")";
+        // }
+        // else if(funcName == "EAST_ANALYZE_ERROR" || funcName == "EAST_SYNC" || funcName == "EAST_FIX")
+        // {
+        //     stream << funcName << "("
+        //            << print(call->getArg(0), &helper)
+        //            <<","
+        //            << print(call->getArg(0))
+        //            << ")";
+        // }
+        // else if(funcName == "EAST_DRAW_ERROR")
+        // {
+        //     stream << funcName << "("
+        //            << print(call->getArg(0))
+        //            <<","
+        //            << print(call->getArg(1), &helper)
+        //            <<","
+        //            << print(call->getArg(2))
+        //            << ")";
+        // }
     }
 
     void doTranslateCall(const Stmt *site, const CallExpr *call, const Expr *ret, RealVarPrinterHelper &helper)

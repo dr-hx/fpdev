@@ -19,6 +19,7 @@ auto fpFunc = functionDecl(anyOf(returns(realFloatingPointType()), hasAnyParamet
 // auto fpCxxMemFpFunc = cxxMethodDecl(anyOf(hasType(realFloatingPointType()),hasAnyParameter(hasType(realFloatingPointType()))));
 
 auto rootStmt = stmt(anyOf(unless(expr()), expr(hasParent(compoundStmt()))));
+// auto rootStmt = stmt(hasParent(compoundStmt()));
 
 //FIXME, stmt(unless(expr()) cannot handle assignments and other cases
 auto callFpFunc = callExpr(
@@ -35,7 +36,14 @@ auto callFpFunc = callExpr(
 auto calls = expr(anyOf(callExpr(), cxxMemberCallExpr(), cxxOperatorCallExpr()));
 auto arth = expr(anyOf(unaryOperator(), binaryOperator(), calls));
 
-auto nonSimpleExpr = expr(allOf(hasAncestor(expr(allOf(calls, hasAncestor(rootStmt.bind("stmt"))))), arth));
+// auto nonSimpleExpr = expr(allOf(hasAncestor(expr(allOf(calls, hasAncestor(rootStmt.bind("stmt"))))), arth));
+auto nonSimpleExpr = expr(
+    hasAncestor(callExpr(anyOf(
+        rootStmt.bind("stmt"), 
+        allOf(unless(rootStmt), hasAncestor(rootStmt.bind("stmt")))
+    ))), 
+    arth
+);
 
 auto paramOfCall = callExpr(forEachArgumentWithParam(nonSimpleExpr.bind("expression"), parmVarDecl(hasType(realFloatingPointType()))));
 // auto paramOfCall = expr(allOf(nonSimpleExpr, hasType(realFloatingPointType()), hasAncestor(callExpr()))).bind("expression");

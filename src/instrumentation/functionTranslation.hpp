@@ -21,6 +21,7 @@ struct FunctionTranslationStrategy
         abstractedFunctions.clear();
         abstractedFunctions["pow"] = "real::RealPow";
         abstractedFunctions["exp"] = "real::RealExp";
+        abstractedFunctions["sqrt"] = "real::RealSqrt";
     }
 
     bool isTranslated(const clang::FunctionDecl* Func, const clang::SourceManager *Manager)
@@ -45,6 +46,44 @@ struct FunctionTranslationStrategy
         auto it = abstractedFunctions.find(name);
         if(it==abstractedFunctions.end()) return nullptr;
         else return &it->second;
+    }
+
+    void doTranslatePseudoFunctionCall(llvm::raw_ostream& stream, const clang::CallExpr* call, clang::PrinterHelper& helper)
+    {
+        auto funcName = call->getDirectCallee()->getNameAsString();
+        
+        if(funcName == "EAST_DUMP")
+        {
+            stream << MatchHandler::print(call, &helper) << "";
+        }
+        else if(funcName == "EAST_DUMP_ERROR" || funcName == "EAST_CONDITION")
+        {
+            stream << funcName << "("
+                   << MatchHandler::print(call->getArg(0), &helper)
+                   <<","
+                   << MatchHandler::print(call->getArg(1), &helper)
+                   <<","
+                   << MatchHandler::print(call->getArg(1))
+                   << ")";
+        }
+        else if(funcName == "EAST_ANALYZE_ERROR" || funcName == "EAST_SYNC" || funcName == "EAST_FIX")
+        {
+            stream << funcName << "("
+                   << MatchHandler::print(call->getArg(0), &helper)
+                   <<","
+                   << MatchHandler::print(call->getArg(0))
+                   << ")";
+        }
+        else if(funcName == "EAST_DRAW_ERROR")
+        {
+            stream << funcName << "("
+                   << MatchHandler::print(call->getArg(0))
+                   <<","
+                   << MatchHandler::print(call->getArg(1), &helper)
+                   <<","
+                   << MatchHandler::print(call->getArg(2))
+                   << ")";
+        }
     }
 };
 

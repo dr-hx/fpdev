@@ -1,70 +1,24 @@
 // #define __APPLE__ 1
 // #include <dispatch/dispatch.h>
 #include <stdio.h>
+#include <math.h>
 // #include <stdio.h>
 #include <real/EAST.h>
 
-#define __LO(x) *(int*)&x
-double fabs(double x)
+void root(double a, double b, double c)
 {
+  double delta = b * b - 4 * a * c;
+  double sq = sqrt(delta);
+  double r1 = (- b + sq) / a / 2;
+  double r2 = (- b - sq) / a / 2;
 
-	double df = 1;
-	__LO(df) = 0;
-
-    if(x>0) return x;
-    else return 0 - x;
-}
-
-#define LB -30
-#define UB -20
-#define INC 0.1
-
-struct TestS
-{
-  TestS() : x(0) {}
-  double x;
-  double fp();
-};
-
-struct TestT : public TestS
-{
-  TestT();
-};
-
-TestT::TestT() : TestS() {}
-
-double TestS::fp()
-{
-  return x+1;
-}
-
-void testPF0()
-{
-  for (double x = LB; x < UB; x = x + INC)
-  {
-    double sum = 0.0;
-    double term = 1.0;
-    for (int i = 1; sum != sum + term; i++)
-    {
-      sum = sum + term;
-      term = term * x / i;
-    }
-    // double ae = exp(x);
-    std::cout << exp(x) <<"\n";
-    // EAST_DUMP(std::cout, sum);
-    // EAST_ANALYZE(std::cout, sum);
-  }
+  EAST_DUMP_ERROR(std::cout, r1);
+  EAST_DUMP_ERROR(std::cout, r2);
 }
 
 int main(int argc, char const *argv[])
 {
-    real::Real r;
-    r = 1;
-
-    double arr[10];
-    arr[0] = 1;
-    int *p = NULL;
-    testPF0();
+    root(1.0/3, M_PI * 100, 1.0/7);
     // double a = 2.0;
     // double expect_error = 0.000001;
     // double x;
