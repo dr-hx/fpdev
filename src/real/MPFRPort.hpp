@@ -52,5 +52,16 @@
 #define EXP_R(res, r) mpfr_exp(res, r, RND)
 #define POW_RR(res, a, b) mpfr_pow(res, a, b, RND) 
 
+#define COPY_EXP_D(res, d) mpfr_set_exp(res, __EXP_BITS(d))
+
+
+static const int MP_LIMB_T_SIZE = sizeof(mp_limb_t)*8;
+
+#define CLEAR_LOWS(res) do {\
+    int __l = (res->_mpfr_prec+MP_LIMB_T_SIZE-1)/MP_LIMB_T_SIZE; \
+    for(int __i=0; __i<__l-1;__i++) res->_mpfr_d[__i]=0;\
+    int clearBits = MP_LIMB_T_SIZE - 21; \
+    res->_mpfr_d[__l-1] = (res->_mpfr_d[__l-1] >> clearBits) << clearBits; \
+    } while(0)
 
 #endif

@@ -59,6 +59,6 @@
 #define EXP_R(res, r) res = exp(r)
 #define POW_RR(res, a, b) res=pow(a,b)
 
-
-
+#define COPY_EXP_D(res, d) __HI(res.x[0])=__HI(d)
+#define CLEAR_LOWS(res) __LO(res.x[0]) = 0, res.x[1] = 0
 #endif

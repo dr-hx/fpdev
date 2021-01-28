@@ -5,6 +5,8 @@
 #include "../transformer/analysis.hpp"
 #include "functionTranslation.hpp"
 
+#define __LITTLE_ENDIAN
+
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
@@ -105,6 +107,17 @@ auto outStmt = stmt(isExpansionInMainFile(), anyOf(breakStmt(), returnStmt(optio
 
 // hook constructor and destructor
 //  constructor: default+customized, copy, move
+
+auto fpAddrCast = castExpr(hasSourceExpression(unaryOperator(hasOperatorName("&"), hasUnaryOperand(expr(hasType(fpType)).bind("fpVar")))));
+
+auto bitwiseAssign = binaryOperator(isExpansionInMainFile(), isAssignmentOperator(), hasType(isInteger()),
+    hasLHS(unaryOperator(hasOperatorName("*"), hasUnaryOperand(
+        expr(anyOf(
+            fpAddrCast,
+            binaryOperator(hasOperatorName("+"),hasOperands(integerLiteral(equals(1)),fpAddrCast)).bind("offset")
+        ))
+    )))
+).bind("bitwise-op");
 
 struct AllocSite
 {
@@ -865,6 +878,22 @@ public:
     static FpStmt createFpInc(const Stmt *inc) { return FpStmt(Type::FP_INC, inc); }
     // static FpStmt createFpVarDecl(const Stmt *decl, const Stmt *call, const VarDecl *var) { return FpStmt(Type::FP_DECL_WITH_CALL, decl, call, var); }
 };
+
+struct BitwiseAssignment
+{
+    enum Mode
+    {
+        FULL,
+        HI_PART,
+        LO_PART
+    };
+    const BinaryOperator* bitAssign;
+    const Expr* fpVar;
+    Mode mode;
+
+    BitwiseAssignment(const BinaryOperator* a, const Expr* f, Mode m) : bitAssign(a), fpVar(f), mode(m) {}
+};
+
 class FpArithInstrumentation : public MatchHandler
 {
 protected:
@@ -880,6 +909,7 @@ protected:
     const SourceManager *manager;
     std::string filename;
     std::vector<FpStmt> fpStatements;
+    std::vector<BitwiseAssignment> bitwiseAssignment;
     // std::vector<const ParmVarDecl *> fpParameters;
 
     struct RealVarPrinterHelper : public PrinterHelper
@@ -1052,12 +1082,46 @@ public:
                 const Expr* size = Result.Nodes.getNodeAs<Expr>("size");
                 dynArrRecord.logAlloc(alloc, size, *Result.SourceManager);
                 fillReplace(alloc, Result);
+                return;
             } 
             else if(free!=nullptr)
             {
                 const Expr* pt = Result.Nodes.getNodeAs<Expr>("pointer");
                 dynArrRecord.logFree(free, pt, *Result.SourceManager);
                 fillReplace(free, Result);
+                return;
+            }
+        }
+
+        {
+            const BinaryOperator* bitA = Result.Nodes.getNodeAs<BinaryOperator>("bitwise-op");
+            const Expr* fp = Result.Nodes.getNodeAs<Expr>("fpVar");
+            const IntegerLiteral* off = Result.Nodes.getNodeAs<IntegerLiteral>("offset");
+            if(bitA!=nullptr)
+            {
+                BitwiseAssignment::Mode mode;
+                if(bitA->getType().getDesugaredType(*Result.Context).getAsString().compare("long")==0)
+                    mode = BitwiseAssignment::Mode::FULL;
+                else if(off!=nullptr)
+                {
+#ifdef __LITTLE_ENDIAN
+                    mode = BitwiseAssignment::Mode::HI_PART;
+#else
+                    mode = BitwiseAssignment::Mode::LO_PART;
+#endif
+                }
+                else
+                {
+#ifdef __LITTLE_ENDIAN
+                    mode = BitwiseAssignment::Mode::LO_PART;
+#else
+                    mode = BitwiseAssignment::Mode::HI_PART;
+#endif
+                }
+                auto rec = BitwiseAssignment(bitA, fp, mode);
+                bitwiseAssignment.push_back(rec);
+
+                return;
             }
         }
 
@@ -1119,6 +1183,35 @@ public:
         }
     }
 
+    void doTranslateBitwiseAssignment(RealVarPrinterHelper &helper)
+    {
+        std::ostringstream stream;
+
+
+        for(auto &op : bitwiseAssignment)
+        {
+            stream << print(op.bitAssign) <<";\n";
+            switch (op.mode)
+            {
+            case BitwiseAssignment::Mode::HI_PART:
+                stream << print(op.fpVar, &helper) <<".reloadHigh("<< print(op.fpVar) <<")";
+                break;
+            case BitwiseAssignment::Mode::LO_PART:
+                stream << print(op.fpVar, &helper) <<".reloadLow("<< print(op.fpVar) <<")";
+                break;
+            case BitwiseAssignment::Mode::FULL:
+                stream << print(op.fpVar, &helper) <<" = "<< print(op.fpVar) <<"";
+                break;
+            default:
+                break;
+            }
+            stream.flush();
+            auto rep = ReplacementBuilder::create(*manager, op.bitAssign, stream.str());
+            addReplacement(rep);
+            stream.str("");
+        }
+    }
+
     virtual void onStartOfTranslationUnit()
     {
         manager = nullptr;
@@ -1169,6 +1262,8 @@ public:
             doTranslateRealStatements(helper);
             // undef
             doUndefReals(scopeTree, helper);
+
+            doTranslateBitwiseAssignment(helper);
         }
         clear();
     }
@@ -1206,6 +1301,7 @@ public:
         fpStatements.clear();
         callSites.clear();
         dynArrRecord.clear();
+        bitwiseAssignment.clear();
     }
 
 protected:
@@ -1709,6 +1805,9 @@ int main(int argc, const char **argv)
 
     // call sites
     tool.add(fpCallArg, handler);
+
+    // bitwise op
+    tool.add(bitwiseAssign, handler);
 
     tool.add(stmtToBeConverted, handler);
     // tool.add(fpVarDefWithCallInitializer, handler);

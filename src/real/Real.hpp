@@ -823,6 +823,46 @@ namespace real
             RealPool<Real>::INSTANCE.put(&r);
             return ret;
         }
+
+        INLINE_FLAGS void reloadHigh(double v)
+        {
+            double current;
+#if KEEP_ORIGINAL
+            current = this->shadow->originalValue;
+#else
+            current = TO_DOUBLE(this->shadow->shadowValue);
+#endif
+            if(__HI_SIG_BITS(current) == __HI_SIG_BITS(v))
+            {
+                // set exp
+                COPY_EXP_D(this->shadow->shadowValue, v);
+#if KEEP_ORIGINAL
+                __HI(this->shadow->originalValue) = __HI(v);
+#endif
+                // there is no need to track the error because the significand bits are not changed
+            }
+            else
+            {
+                std::cout << "[WARNING] high significands are changed by bitwise op! Reload full value!\n";
+                *this = v;
+            }
+        }
+
+        INLINE_FLAGS void reloadLow(double v)
+        {
+            if(__LO(v)==0)
+            {
+                CLEAR_LOWS(this->shadow->shadowValue);
+#if KEEP_ORIGINAL
+                __LO(this->shadow->originalValue) = 0;
+#endif
+            }
+            else
+            {
+                std::cout << "[WARNING] low significands are not cleared by bitwise op! Reload full value!\n";
+                *this = v;
+            }
+        }
     };
 
     class Timer

@@ -2,10 +2,15 @@
 // #include <dispatch/dispatch.h>
 #include <stdio.h>
 // #include <stdio.h>
-#include <EAST.h>
+#include <real/EAST.h>
 
+#define __LO(x) *(int*)&x
 double fabs(double x)
 {
+
+	double df = 1;
+	__LO(df) = 0;
+
     if(x>0) return x;
     else return 0 - x;
 }
@@ -46,13 +51,15 @@ void testPF0()
     }
     // double ae = exp(x);
     std::cout << exp(x) <<"\n";
-    EAST_DUMP(std::cout, sum);
-    EAST_ANALYZE(std::cout, sum);
+    // EAST_DUMP(std::cout, sum);
+    // EAST_ANALYZE(std::cout, sum);
   }
 }
 
 int main(int argc, char const *argv[])
 {
+    real::Real r;
+    r = 1;
 
     double arr[10];
     arr[0] = 1;

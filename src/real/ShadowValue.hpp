@@ -1,6 +1,18 @@
 #ifndef SHADOW_VALUE_HPP
 #define SHADOW_VALUE_HPP
 
+#ifdef __LITTLE_ENDIAN
+#define __HI(x) *(1+(int*)&x)
+#define __LO(x) *(int*)&x
+#else
+#define __HI(x) *(int*)&x
+#define __LO(x) *(1+(int*)&x)
+#endif
+
+#define __HI_SIG_BITS(x) (__HI(x) & 0x000FFFFF)
+#define __EXP_BITS(x) ((__HI(x) & 0x7FF00000) >> 20)
+
+
 #if  PORT_TYPE == DD_PORT
 #include "DDPort.hpp"
 #else

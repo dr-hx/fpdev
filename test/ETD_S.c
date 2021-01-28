@@ -324,6 +324,11 @@ int main(int argc, char *argv[])
 	free(C);
 	C = NULL;
 
+#define __LO(x) *(int*)&x
+
+	double df = 1;
+	__LO(df) = 0;
+
 	//system("pause");
 	printf("totaltime=%fs\n", totaltime);
 	return 0;

@@ -97,4 +97,6 @@
 
 #define CACHE_SIZE 0x8000
 
+#define __LITTLE_ENDIAN
+
 #endif
