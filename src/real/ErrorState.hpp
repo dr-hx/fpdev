@@ -187,28 +187,55 @@ namespace real
         {
             std::set<void *> visited;
             stream << "digraph root {\n";
-            visualize(stream, root, name, visited);
+            stream << "subgraph maxError {\n";
+            visualize(true, true, stream, root, name, visited);
+            stream << "};\n";
+            visited.clear();
+            stream << "subgraph lastError {\n";
+            visualize(false, true, stream, root, name, visited);
+            stream << "};\n";
             stream << "}";
         }
 
-        void visualize(std::ostream &stream, const SymbolicVarError &var, const std::string &name, std::set<void *> &visited, const std::string *from = nullptr)
+        void visualize(bool max, bool critical, std::ostream &stream, const SymbolicVarError &var, const std::string &name, std::set<void *> &visited, const std::string *from = nullptr)
         {
             if (visited.count((void *)&var) != 0)
                 return;
             visited.insert((void *)&var);
-            stream << name
+            stream << (max ? "MAX_" : "LAST_") << name
                    << " [shape=record, label=\"{"
-                   << name << "|"
-                   << "MRE=" << var.maxRelativeError
-                   << "}\"];\n";
-            uint64 causing = var.errorCausingCalculationID;
+                   << name << "|";
+            if(max) 
+                stream << "MRE=" << var.maxRelativeError;
+            else 
+                stream << "LRE=" << var.relativeErrorOfLastCheck;
+            stream << "}\"";
+            if(critical)
+                stream << ", color=\"red\", penwidth=2.0";
+            stream << "];\n";
+            uint64 causing = max ? var.errorCausingCalculationID : var.errorCausingCalculationIDOfLastCheck;
             if (from != nullptr)
             {
-                stream << *from << "->" << name << ";\n";
+                stream << (max ? "MAX_" : "LAST_") << *from << "->" << (max ? "MAX_" : "LAST_") << name;
+                if(critical)
+                    stream << "[color=\"red\", penwidth=2.0]";
+                stream << ";\n";
             }
-            visualize(stream, causing, visited, &name);
+            visualize(max, critical, stream, causing, visited, &name);
         }
-        void visualize(std::ostream &stream, uint64 PC, std::set<void *> &visited, const std::string *from = nullptr)
+        std::string shortPathName(const std::string &path)
+        {
+            size_t pos = path.find_last_of('/', path.size());
+            if(pos==-1)
+            {
+                return path;
+            }
+            else
+            {
+                return path.substr(pos+1, path.size()-1-pos);
+            }
+        }
+        void visualize(bool max, bool critical, std::ostream &stream, uint64 PC, std::set<void *> &visited, const std::string *from = nullptr)
         {
             if (visited.count((void *)&errors[PC]) != 0)
                 return;
@@ -219,21 +246,40 @@ namespace real
             calcNameString << "_CALC_" << PC << "";
             std::string name = calcNameString.str();
 
-            stream << name
+            stream << (max ? "MAX_" : "LAST_") << name
                    << " [shape=ellipse, label=\""
-                   << PC << ":" << locationStrings[PC]
-                   << "\"];\n";
+                   << PC << ":" << shortPathName(locationStrings[PC]) << "\"";
+            if(critical)
+                    stream << ", color=\"red\", penwidth=2.0";
+            stream << "];\n";
             if (from != nullptr)
             {
-                stream << *from << "->" << name << ";\n";
+                stream << (max ? "MAX_" : "LAST_") << *from << "->" << (max ? "MAX_" : "LAST_") << name ;
+                if(critical)
+                    stream << "[color=\"red\", penwidth=2.0]";
+                stream << ";\n";
             }
+
+            double mre = 0;
+            if(critical)
+            {
+                for (int i = 0, size = calc.inputVars.size(); i < size; i++)
+                {
+                    auto &var = calc.inputVars[i];
+                    double re = max ? var.maxRelativeError : var.relativeErrorOfLastCheck;
+                    if(re>mre) mre = re;
+                }    
+            }
+
             for (int i = 0, size = calc.inputVars.size(); i < size; i++)
             {
                 auto &var = calc.inputVars[i];
+                double re = max ? var.maxRelativeError : var.relativeErrorOfLastCheck;
+                bool ncritical = critical && mre!=0 && (mre < re * 1.1);
                 std::ostringstream namestream("");
                 namestream << "_CALC_" << PC << "_" << i;
                 std::string varName = namestream.str();
-                visualize(stream, var, varName, visited, &name);
+                visualize(max, ncritical, stream, var, varName, visited, &name);
             }
         }
     };

@@ -18,7 +18,7 @@ void root(double a, double b, double c)
 
 int main(int argc, char const *argv[])
 {
-    root(1.0/3, M_PI * 100, 1.0/7);
+    root(1.0/3, (2.0+1.3E-6)/3, 1.0/3);
     // double a = 2.0;
     // double expect_error = 0.000001;
     // double x;
