@@ -78,6 +78,18 @@
         "__cxx_version": "cpp",
         "version": "cpp",
         "iomanip": "cpp",
-        "fstream": "cpp"
-    }
+        "fstream": "cpp",
+        "__functional_03": "cpp"
+    },
+    "better-comments.tags": [
+        {
+          "tag": "SECTION",
+          "color": "#FF0000",
+          "strikethrough": false,
+          "underline": false,
+          "backgroundColor": "transparent",
+          "bold": false,
+          "italic": false
+        }
+    ]
 }

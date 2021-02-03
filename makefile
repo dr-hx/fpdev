@@ -114,3 +114,14 @@ vis : $(subst .dot,.png,$(wildcard *.dot))
 
 sample: src/main.cpp
 	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS) $^ $(CLANG_LIBS) $(LLVM_LDFLAGS) -o bin/main -v
+
+
+bin/tooltest : ustbtool/tooltest.cpp
+	${CC} $(CXXFLAGS) $(LLVM_CXXFLAGS)  $< $(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
+
+tooltest : bin/tooltest
+	bin/tooltest ${TEST_BASE}/test_tool.cpp $(EXTRA_FLAGS)
+
+
+.PHONY : tooltest
+
